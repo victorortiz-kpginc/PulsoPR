@@ -1,6 +1,6 @@
 import type { AssistanceRequest, Confirmation, Facility, RequestEvent } from '../domain/contracts';
 export type ProviderKind = 'person' | 'organization' | 'community_center';
-// UI-only classification; never send kind/providerType to unconfirmed backend schema.
+// Visual fixture wrapper. Persisted providerType confirmed by backend PROVIDER-TYPES; kind is presentation only.
 export interface PreviewProvider { facility: Facility; kind: ProviderKind; service: string; summary: string; initials: string; color: string; confirmation?: Confirmation; operational: string; resources: string; electricity: string; generator: string }
 export const kindText: Record<ProviderKind, string> = { person: 'Persona', organization: 'Organización', community_center: 'Centro comunitario' };
 export const municipalities = ['Adjuntas', 'Ponce', 'San Juan'];
