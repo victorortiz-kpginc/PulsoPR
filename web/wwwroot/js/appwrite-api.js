@@ -1,5 +1,6 @@
 import { Client, Databases, Account, Teams, ID, Query } from './appwrite-sdk.js';
 import { createMvpApi, resolvePortalRole } from './appwrite-api-core.js';
+import { signInWithSession } from './auth-session-core.js';
 
 let api;
 let account;
@@ -38,10 +39,7 @@ export async function currentSession() {
   } catch { return null; }
 }
 export async function signIn(email, password) {
-  await account.createEmailPasswordSession({ email, password });
-  const session = await currentSession();
-  if (!session?.role) { await account.deleteSession({ sessionId: 'current' }); throw new Error('ACCOUNT_WITHOUT_UNIQUE_PORTAL_ROLE'); }
-  return session;
+  return signInWithSession({ account, currentSession }, email, password);
 }
 export async function signOut() { await account.deleteSession({ sessionId: 'current' }); }
 export async function requestRecovery(email, url) { return account.createRecovery({ email, url }); }

@@ -97,7 +97,9 @@ else
     <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.LockOpen" OnClick="SignInAsync" Disabled="@authBusy">@(authBusy ? "Conectando…" : "Iniciar sesión")</MudButton>
 </MudForm>
 <MudButton Href="/recuperacion" Variant="Variant.Text" Class="access-recovery">¿Olvidaste tu contraseña?</MudButton>
-@if (accessError) { <MudAlert Severity="Severity.Error" Dense="true" Class="mt-2">No fue posible validar la cuenta. Revisa el correo y la contraseña.</MudAlert> }
+@if (!string.IsNullOrEmpty(accessError)) { <MudAlert Severity="Severity.Error" Dense="true" Class="mt-2">@accessError
+@if (sessionNeedsSignOut) { <MudButton OnClick="ClearActiveSessionAsync" Disabled="@authBusy">Cerrar sesión actual</MudButton> }
+</MudAlert> }
 <MudDivider />
 <p class="small">El acceso depende de la cuenta asignada. Para ayuda con tu cuenta, comunícate con el equipo de Pulso PR.</p>
 </MudPaper>
@@ -530,7 +532,8 @@ else
     private MudForm? form;
     private MudForm? accessForm;
     private MudForm? recoveryForm;
-    private bool accessError;
+    private string accessError="";
+    private bool sessionNeedsSignOut;
     private bool recoveryNotice;
     private bool authBusy;
     private string loginEmail="", loginPassword="", recoveryEmail="", recoveryPassword="", recoveryError="";
@@ -575,15 +578,42 @@ else
     public void Dispose() => Nav.LocationChanged -= LocationChanged;
     private async Task SignInAsync()
     {
+        if (authBusy) return;
         if (accessForm is null) return; await accessForm.ValidateAsync(); if (!accessForm.IsValid) return;
-        authBusy=true; accessError=false;
+        authBusy=true; accessError=""; sessionNeedsSignOut=false;
         try
         {
             var session=await Api.SignInAsync(loginEmail.Trim(),loginPassword); Auth.Set(session); Store.Role=session.Role!;
             Nav.NavigateTo(session.Role=="admin" ? "/admin" : "/proveedor", replace:true);
             await RefreshRemoteData();
         }
-        catch { accessError=true; }
+        catch (Microsoft.JSInterop.JSException error)
+        {
+            if (error.Message.Contains("DIFFERENT_ACCOUNT_SESSION_ACTIVE"))
+            {
+                accessError="Ya hay otra cuenta conectada en este navegador. Cierra su sesión antes de cambiar de cuenta.";
+                sessionNeedsSignOut=true;
+            }
+            else if (error.Message.Contains("ACCOUNT_WITHOUT_UNIQUE_PORTAL_ROLE"))
+            {
+                accessError="Tu cuenta no tiene una asignación única de proveedor o administración. Comunícate con el equipo de Pulso PR.";
+                sessionNeedsSignOut=true;
+            }
+            else if (error.Message.Contains("SESSION_RECHECK_FAILED"))
+            {
+                accessError="No pudimos recuperar la sesión activa. Recarga la página y vuelve a intentar.";
+            }
+            else { accessError="No fue posible validar la cuenta. Revisa el correo y la contraseña."; }
+        }
+        catch { accessError="No fue posible iniciar sesión. Vuelve a intentar."; }
+        finally { authBusy=false; loginPassword=""; }
+    }
+    private async Task ClearActiveSessionAsync()
+    {
+        if (authBusy) return;
+        authBusy=true;
+        try { await Api.SignOutAsync(); Auth.Clear(); sessionNeedsSignOut=false; accessError=""; loginPassword=""; }
+        catch { accessError="No pudimos cerrar la sesión. Recarga la página y vuelve a intentar."; }
         finally { authBusy=false; }
     }
     private async Task RecoveryAsync()
