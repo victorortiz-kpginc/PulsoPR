@@ -50,7 +50,9 @@
         "address": "Dirección ficticia: demo de hackathon",
         "hours": "Demo: 8:00–18:00",
         "teamId": "hackathon-demo-team",
-        "providerType": "organization"
+        "providerType": "organization",
+        "latitude": 18.1628,
+        "longitude": -66.7221
       },
       "permissions": []
     },
@@ -118,7 +120,7 @@
       "collectionId": "assistance_requests",
       "documentId": "hackathon-demo-request",
       "data": {
-        "citizenId": "demo-citizen",
+        "citizenId": "pulso-demo-citizen",
         "facilityId": "hackathon-demo-pharmacy",
         "serviceId": "pharmacy",
         "municipalityId": "72001",
@@ -133,7 +135,7 @@
       "data": {
         "requestId": "hackathon-demo-request",
         "eventType": "submitted",
-        "actorId": "demo-citizen",
+        "actorId": "pulso-demo-citizen",
         "occurredAt": "2026-10-09T12:07:29.115Z",
         "responseNote": "Evento inicial sintético"
       },
@@ -201,6 +203,42 @@
         "note": "Servicio ficticio de demostración"
       },
       "permissions": []
+    },
+    {
+      "collectionId": "incidents",
+      "documentId": "hackathon-incident-adjuntas-active",
+      "permissions": [],
+      "data": {
+        "municipalityId": "72001",
+        "incidentType": "community",
+        "title": "Incidente comunitario",
+        "description": "Incidente sintético de demostración en Adjuntas.",
+        "latitude": 18.1661,
+        "longitude": -66.7185,
+        "radiusMeters": 700,
+        "status": "active",
+        "validFrom": "2026-10-09T00:00:00.000Z",
+        "validUntil": "2026-10-10T23:59:59.000Z",
+        "source": "synthetic"
+      }
+    },
+    {
+      "collectionId": "incidents",
+      "documentId": "hackathon-incident-adjuntas-expired",
+      "permissions": [],
+      "data": {
+        "municipalityId": "72001",
+        "incidentType": "community",
+        "title": "Incidente vencido",
+        "description": "Registro sintético para validar exclusión por vigencia.",
+        "latitude": 18.16,
+        "longitude": -66.72,
+        "radiusMeters": 300,
+        "status": "active",
+        "validFrom": "2026-10-01T00:00:00.000Z",
+        "validUntil": "2026-10-02T00:00:00.000Z",
+        "source": "synthetic"
+      }
     }
   ],
   "resetPolicy": "Delete/reset only these explicit synthetic IDs if requested. Preserve other client data; do not purge collections. Refresh confirmation timestamps for a later presentation."

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "contractVersion": "v1.1",
+  "contractVersion": "v1.2",
   "status": "desired_configuration",
   "database": {
     "id": "pulso-pr",
@@ -304,6 +304,30 @@
             "ASC",
             "ASC"
           ]
+        },
+        {
+          "key": "idx_facilities_geo",
+          "type": "key",
+          "attributes": ["latitude", "longitude"],
+          "orders": ["ASC", "ASC"]
+        },
+        {
+          "key": "idx_facilities_geo_muni",
+          "type": "key",
+          "attributes": ["municipalityId", "latitude", "longitude"],
+          "orders": ["ASC", "ASC", "ASC"]
+        },
+        {
+          "key": "idx_facilities_geo_type",
+          "type": "key",
+          "attributes": ["providerType", "latitude", "longitude"],
+          "orders": ["ASC", "ASC", "ASC"]
+        },
+        {
+          "key": "idx_fac_geo_muni_type",
+          "type": "key",
+          "attributes": ["municipalityId", "providerType", "latitude", "longitude"],
+          "orders": ["ASC", "ASC", "ASC", "ASC"]
         }
       ],
       "references": {
@@ -311,6 +335,38 @@
         "teamId": "Appwrite Teams.$id (optional in direct demo SDK; native Function still requires valid team)",
         "imageFileId": "Appwrite Storage facility-images.$id"
       }
+    },
+    {
+      "id": "incidents",
+      "name": "Incidents",
+      "visibility": "demo-public",
+      "documentSecurity": true,
+      "permissions": [
+        "read(\"any\")",
+        "create(\"any\")",
+        "update(\"any\")",
+        "delete(\"any\")"
+      ],
+      "clientWrites": "enabled_synthetic_hackathon_only",
+      "documentIdentity": "Appwrite ID.unique generated before the first write; reuse on retry",
+      "attributes": [
+        { "key": "title", "type": "string", "size": 160, "required": true },
+        { "key": "description", "type": "string", "size": 500, "required": true },
+        { "key": "incidentType", "type": "string", "size": 64, "required": true },
+        { "key": "municipalityId", "type": "string", "size": 36, "required": true },
+        { "key": "latitude", "type": "double", "required": true, "min": -90, "max": 90 },
+        { "key": "longitude", "type": "double", "required": true, "min": -180, "max": 180 },
+        { "key": "radiusMeters", "type": "integer", "required": true, "min": 1, "max": 100000 },
+        { "key": "status", "type": "enum", "elements": ["active", "resolved", "cancelled"], "required": true },
+        { "key": "validFrom", "type": "datetime", "required": true },
+        { "key": "validUntil", "type": "datetime", "required": true },
+        { "key": "source", "type": "enum", "elements": ["synthetic", "manual"], "required": true }
+      ],
+      "indexes": [
+        { "key": "idx_inc_geo_status", "type": "key", "attributes": ["status", "latitude", "longitude"], "orders": ["ASC", "ASC", "ASC"] },
+        { "key": "idx_inc_geo_muni", "type": "key", "attributes": ["municipalityId", "status", "latitude", "longitude"], "orders": ["ASC", "ASC", "ASC", "ASC"] }
+      ],
+      "references": { "municipalityId": "municipalities.$id" }
     },
     {
       "id": "facility_services",
