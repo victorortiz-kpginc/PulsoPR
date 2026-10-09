@@ -3,7 +3,7 @@
   "synthetic": true,
   "projectId": "6ac82de0000ae8ab05a2",
   "environment": "dev",
-  "observedAt": "2026-10-09T12:12:34.943Z",
+  "observedAt": "2026-10-09T13:05:42.604Z",
   "team": {
     "id": "hackathon-demo-team",
     "name": "Equipo ficticio del hackathon"
@@ -17,7 +17,8 @@
         "municipalityId": "72001",
         "address": "Dirección ficticia: demo de hackathon",
         "hours": "Demo: 8:00–18:00",
-        "teamId": "hackathon-demo-team"
+        "teamId": "hackathon-demo-team",
+        "providerType": "organization"
       },
       "permissions": []
     },
@@ -103,6 +104,69 @@
         "actorId": "demo-citizen",
         "occurredAt": "2026-10-09T12:07:29.115Z",
         "responseNote": "Evento inicial sintético"
+      },
+      "permissions": []
+    },
+    {
+      "collectionId": "facilities",
+      "documentId": "hackathon-demo-person",
+      "data": {
+        "name": "Persona Proveedora Demo — FICTICIA",
+        "municipalityId": "72001",
+        "providerType": "person"
+      },
+      "permissions": []
+    },
+    {
+      "collectionId": "facility_services",
+      "documentId": "hackathon-person-service",
+      "data": {
+        "facilityId": "hackathon-demo-person",
+        "serviceId": "pharmacy",
+        "availability": "available",
+        "note": "Servicio ficticio de demostración"
+      },
+      "permissions": []
+    },
+    {
+      "collectionId": "facilities",
+      "documentId": "hackathon-demo-organization",
+      "data": {
+        "name": "Organización Demo — FICTICIA",
+        "municipalityId": "72001",
+        "providerType": "organization"
+      },
+      "permissions": []
+    },
+    {
+      "collectionId": "facility_services",
+      "documentId": "hackathon-org-service",
+      "data": {
+        "facilityId": "hackathon-demo-organization",
+        "serviceId": "pharmacy",
+        "availability": "available",
+        "note": "Servicio ficticio de demostración"
+      },
+      "permissions": []
+    },
+    {
+      "collectionId": "facilities",
+      "documentId": "hackathon-demo-community",
+      "data": {
+        "name": "Centro Comunitario Demo — FICTICIO",
+        "municipalityId": "72001",
+        "providerType": "community_center"
+      },
+      "permissions": []
+    },
+    {
+      "collectionId": "facility_services",
+      "documentId": "hackathon-community-service",
+      "data": {
+        "facilityId": "hackathon-demo-community",
+        "serviceId": "pharmacy",
+        "availability": "available",
+        "note": "Servicio ficticio de demostración"
       },
       "permissions": []
     }

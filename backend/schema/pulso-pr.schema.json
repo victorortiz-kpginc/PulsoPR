@@ -195,7 +195,8 @@
           "key": "address",
           "type": "string",
           "size": 500,
-          "required": true
+          "required": false,
+          "default": null
         },
         {
           "key": "latitude",
@@ -221,19 +222,32 @@
           "key": "hours",
           "type": "string",
           "size": 500,
-          "required": true
+          "required": false,
+          "default": null
         },
         {
           "key": "teamId",
           "type": "string",
           "size": 36,
-          "required": true
+          "required": false,
+          "default": null
         },
         {
           "key": "imageFileId",
           "type": "string",
           "size": 36,
           "required": false
+        },
+        {
+          "key": "providerType",
+          "type": "enum",
+          "elements": [
+            "person",
+            "organization",
+            "community_center"
+          ],
+          "required": false,
+          "default": "organization"
         }
       ],
       "indexes": [
@@ -268,11 +282,33 @@
           "orders": [
             "ASC"
           ]
+        },
+        {
+          "key": "idx_facilities_provider_type",
+          "type": "key",
+          "attributes": [
+            "providerType"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "idx_facilities_municipality_type",
+          "type": "key",
+          "attributes": [
+            "municipalityId",
+            "providerType"
+          ],
+          "orders": [
+            "ASC",
+            "ASC"
+          ]
         }
       ],
       "references": {
         "municipalityId": "municipalities.$id",
-        "teamId": "Appwrite Teams.$id (one native team per facility)",
+        "teamId": "Appwrite Teams.$id (optional in direct demo SDK; native Function still requires valid team)",
         "imageFileId": "Appwrite Storage facility-images.$id"
       }
     },
