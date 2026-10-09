@@ -30,6 +30,8 @@ The UI-APPROVAL capture and gallery are at `../capture/web/index.md`; 33 post-ap
 
 Both browser scripts need Playwright available on the host. Windows defaults to installed Edge; `BROWSER_CHANNEL` or `CHROMIUM_PATH` can select a browser. If Playwright comes from the bundled runtime, set `NODE_PATH` to the Node.js packages path returned by workspace dependencies. In PowerShell, set `$env:WEB_LIVE_SMOKE='1'` before invoking the live script. No browser/test packages are installed globally by these scripts.
 
+`WEB_LIVE_SMOKE=1 node scripts/provider-live-smoke.cjs` creates a new fictitious provider, exercises profile/optional-field clearing, operational confirmation, services/resources, history, catalog and admin. It preserves all existing records and retains its own synthetic test fixture. Evidence goes to `.evidence/provider-live-smoke.json`. See `../docs/web/DEMO.md` for the walkthrough. Web branding v1.2 uses the mobile SVGs and blue/coral palette; approved on 2026-10-09 with an explicit request to defer new screenshots.
+
 ## Demo-only limits
 
 Appwrite schema, collection ACLs and synthetic fixture setup remain backend-owned. This client trusts the demo's open collection ACLs, uses synthetic actor IDs, and does not make profile/status/history writes transactional. The local Windows browser successfully reached Appwrite and passed the live request/response smoke on 2026-10-09. The earlier cloud runtime's egress restriction is specific to that environment. No site was deployed. Data uses a snapshot of up to 100 documents per collection; reload to see changes from other clients.

@@ -86,7 +86,8 @@ export function createMvpApi({ database, Query, ID, config, now = () => new Date
           municipalityId: municipalityIds[provider.municipality] || provider.municipality,
           providerType: provider.providerType
         };
-        for (const key of ['phone', 'address', 'hours']) if (provider[key]) data[key] = provider[key];
+        // Optional attributes must be sent when cleared so old values do not survive a save.
+        for (const key of ['phone', 'address', 'hours']) data[key] = provider[key] || null;
         return database.updateDocument({ ...ref(table.facilities, provider.id), data });
       }
       if (section === 'operacion') {

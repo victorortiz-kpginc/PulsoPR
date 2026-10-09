@@ -94,3 +94,10 @@ test('profile, service and resource changes update only their own synthetic docu
   assert.equal(data.get('resource_availability')[0].availability, 'available');
   assert.deepEqual(writes.map(write => write.collectionId), ['facilities','facility_services','resource_availability']);
 });
+
+test('clearing optional profile fields removes their previous persisted values', async () => {
+  const { api, data } = fixture();
+  Object.assign(data.get('facilities')[0], { phone:'Contacto ficticio', address:'Dirección ficticia', hours:'09:00–17:00' });
+  await api.saveProvider({ id:'hackathon-demo-pharmacy', name:'Farmacia ficticia', municipality:'San Juan', providerType:'organization', phone:'', address:'', hours:'' }, 'perfil');
+  for (const key of ['phone', 'address', 'hours']) assert.equal(data.get('facilities')[0][key], null);
+});
