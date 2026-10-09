@@ -88,7 +88,7 @@ export async function listCitizenRequests(citizenId = 'demo-citizen'): Promise<A
   return result.documents as unknown as AssistanceRequest[];
 }
 
-export async function getDemoRequest(requestId: string): Promise<{ request: AssistanceRequest; events: RequestEvent[] }> {
+export async function getCitizenRequest(requestId: string): Promise<{ request: AssistanceRequest; events: RequestEvent[] }> {
   const [request, events] = await Promise.all([
     db.getDocument(collection('assistance_requests', requestId)),
     queryRows('assistance_request_events', [Query.equal('requestId', requestId), Query.orderAsc('occurredAt'), Query.limit(100)]),
@@ -96,11 +96,10 @@ export async function getDemoRequest(requestId: string): Promise<{ request: Assi
   return { request: request as unknown as AssistanceRequest, events: events.documents as unknown as RequestEvent[] };
 }
 
-async function createEvent(requestId: string, eventId: string, eventType: RequestStatus, responseNote?: string): Promise<void> {
+async function createSubmittedEvent(requestId: string, eventId: string): Promise<void> {
   try {
     await db.createDocument({ ...collection('assistance_request_events', eventId), permissions: [], data: {
-      requestId, eventType, actorId: eventType === 'submitted' ? 'demo-citizen' : 'demo-provider',
-      occurredAt: new Date().toISOString(), ...(responseNote ? { responseNote } : {}),
+      requestId, eventType: 'submitted', actorId: 'demo-citizen', occurredAt: new Date().toISOString(),
     } });
   } catch (error) {
     // A repeated attempt with the same operation ID must not duplicate its event.
@@ -109,7 +108,7 @@ async function createEvent(requestId: string, eventId: string, eventType: Reques
   }
 }
 
-export async function submitDemoRequest(input: {
+export async function submitCitizenRequest(input: {
   facilityId: string; municipalityId: string; serviceId: string; description: string; requestId: string; eventId: string;
 }): Promise<AssistanceRequest> {
   let request: AssistanceRequest;
@@ -126,14 +125,8 @@ export async function submitDemoRequest(input: {
       request = existing;
     } catch { throw error; }
   }
-  await createEvent(input.requestId, input.eventId, 'submitted');
+  await createSubmittedEvent(input.requestId, input.eventId);
   return request;
-}
-
-export async function respondToDemoRequest(requestId: string, eventId: string, responseNote: string): Promise<AssistanceRequest> {
-  const request = await db.updateDocument({ ...collection('assistance_requests', requestId), data: { status: 'acknowledged' } });
-  await createEvent(requestId, eventId, 'acknowledged', responseNote);
-  return request as unknown as AssistanceRequest;
 }
 
 export function newOperationId(): string {
