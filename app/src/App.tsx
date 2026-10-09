@@ -17,11 +17,13 @@ interface AppDemoState {
   requestRows: AssistanceRequest[];
   activeRequest: AssistanceRequest;
   requestEvents: RequestEvent[];
+  localStateIds: string[];
   dataSource: DataSource;
   setDataSource: (source: DataSource) => void;
   submitRequest: (provider: PreviewProvider, description: string, requestId: string, eventId: string) => Promise<string>;
   respond: (requestId: string) => Promise<void>;
   refreshRequest: (requestId: string) => Promise<void>;
+  refreshRequests: () => Promise<void>;
 }
 const AppDemoContext = createContext<AppDemoState | null>(null);
 function useAppDemo() {
@@ -41,22 +43,23 @@ function AppRoutes() {
   const [requestRows, setRequestRows] = useState<AssistanceRequest[]>([sampleRequest]);
   const [activeRequest, setActiveRequest] = useState<AssistanceRequest>(sampleRequest);
   const [requestEvents, setRequestEvents] = useState<RequestEvent[]>(sampleEvents);
+  const [localStateIds, setLocalStateIds] = useState<string[]>([sampleRequest.$id]);
   const [dataSource, setDataSource] = useState<DataSource>('loading');
   const [requestText, setRequestText] = useState('');
   const notify = (message: string) => setToast(message);
   useEffect(() => {
     let mounted = true;
     void listMunicipalityOptions().then(rows => { if (mounted && rows.length) setMunicipalityRows(rows); }).catch(() => undefined);
-    void listCitizenRequests().then(rows => {
-      if (!mounted) return;
-      setRequestRows(rows);
-      const current = rows.find(row => row.$id === sampleRequest.$id) ?? rows[0];
-      if (current) {
-        setActiveRequest(current);
-        void getDemoRequest(current.$id).then(result => { if (mounted) setRequestEvents(result.events); }).catch(() => undefined);
-      }
-    }).catch(() => undefined);
     return () => { mounted = false; };
+  }, []);
+  const refreshRequests = useCallback(async () => {
+    try {
+      const rows = await listCitizenRequests();
+      const storedIds = new Set(rows.map(row => row.$id));
+      setRequestRows(current => [...rows, ...current.filter(row => !storedIds.has(row.$id))]);
+      setLocalStateIds(current => current.filter(id => !storedIds.has(id)));
+      setDataSource('appwrite');
+    } catch { setDataSource('local'); }
   }, []);
   const refreshRequest = useCallback(async (requestId: string) => {
     try {
@@ -64,14 +67,17 @@ function AppRoutes() {
       setActiveRequest(result.request);
       setRequestEvents(result.events);
       setRequestRows(current => [result.request, ...current.filter(row => row.$id !== requestId)]);
+      setLocalStateIds(current => current.filter(id => id !== requestId));
       setDataSource('appwrite');
     } catch { setDataSource('local'); /* Keep the already labeled local/synthetic fallback. */ }
   }, []);
   const submitRequest = async (provider: PreviewProvider, description: string, requestId: string, eventId: string) => {
     let request: AssistanceRequest;
     let event: RequestEvent;
+    let storedRemotely = false;
     try {
       request = await submitDemoRequest({ facilityId: provider.facility.$id, municipalityId: provider.facility.municipalityId, serviceId: 'pharmacy', description, requestId, eventId });
+      storedRemotely = true;
       event = { $id: eventId, requestId, eventType: 'submitted', actorId: 'demo-citizen', occurredAt: new Date().toISOString() };
       setDataSource('appwrite');
       notify('Solicitud sintética guardada en el entorno de demostración.');
@@ -83,6 +89,7 @@ function AppRoutes() {
     }
     setActiveRequest(request);
     setRequestEvents([event]);
+    setLocalStateIds(current => storedRemotely ? current.filter(id => id !== requestId) : [...new Set([...current, requestId])]);
     setRequestRows(current => [request, ...current.filter(row => row.$id !== request.$id)]);
     return request.$id;
   };
@@ -90,11 +97,12 @@ function AppRoutes() {
     const responseNote = 'Recibimos tu consulta. Verificaremos la disponibilidad y responderemos por este medio. Respuesta ficticia.';
     const eventId = newOperationId();
     try {
-      await respondToDemoRequest(requestId, eventId, responseNote);
-      const result = await getDemoRequest(requestId);
-      setActiveRequest(result.request);
-      setRequestRows(current => current.map(row => row.$id === requestId ? result.request : row));
-      setRequestEvents(result.events);
+      const request = await respondToDemoRequest(requestId, eventId, responseNote);
+      const event = { $id: eventId, requestId, eventType: 'acknowledged' as const, actorId: 'demo-provider', occurredAt: new Date().toISOString(), responseNote };
+      setActiveRequest(request);
+      setRequestRows(current => [request, ...current.filter(row => row.$id !== requestId)]);
+      setRequestEvents(current => [...current.filter(row => row.$id !== eventId), event]);
+      setLocalStateIds(current => current.filter(id => id !== requestId));
       setDataSource('appwrite');
       notify('Respuesta sintética guardada en el entorno de demostración.');
     } catch {
@@ -102,11 +110,12 @@ function AppRoutes() {
       setActiveRequest(current => ({ ...current, $id: requestId, status: 'acknowledged' }));
       setRequestRows(current => current.map(row => row.$id === requestId ? { ...row, status: 'acknowledged' } : row));
       setRequestEvents(current => [...current, { $id: eventId, requestId, eventType: 'acknowledged', actorId: 'demo-provider', occurredAt: now, responseNote }]);
+      setLocalStateIds(current => [...new Set([...current, requestId])]);
       setDataSource('local');
       notify('Appwrite no está disponible: respuesta simulada sólo en esta sesión.');
     }
   };
-  const data: AppDemoState = { providerRows, setProviderRows, municipalityRows, requestRows, activeRequest, requestEvents, dataSource, setDataSource, submitRequest, respond, refreshRequest };
+  const data: AppDemoState = { providerRows, setProviderRows, municipalityRows, requestRows, activeRequest, requestEvents, localStateIds, dataSource, setDataSource, submitRequest, respond, refreshRequest, refreshRequests };
   return <AppDemoContext.Provider value={data}><><Routes>
     <Route path="/" element={<Home />} />
     <Route path="/resultados" element={<Results />} />
@@ -154,9 +163,23 @@ function Results() {
     });
     return () => { mounted = false; };
   }, [selectedMunicipalityId, selectedType, setProviderRows, setDataSource]);
+  const reload = async () => {
+    setMode('carga');
+    const providerType = selectedType === 'all' ? undefined : selectedType as ProviderKind;
+    try {
+      const rows = await listProviders({ municipalityId: selectedMunicipalityId, providerType });
+      setProviderRows(rows);
+      setDataSource('appwrite');
+      setMode('');
+    } catch {
+      setProviderRows(providers.filter(row => row.facility.municipalityId === selectedMunicipalityId && (selectedType === 'all' || row.kind === selectedType)));
+      setDataSource('local');
+      setMode('error');
+    }
+  };
   const filtered = useMemo(() => providerRows.filter(p => service === 'Todos los servicios' || p.service === service), [providerRows, service]);
   const statusNote = mode === 'vacio' ? 'No encontramos opciones con esta combinación. Prueba quitar un filtro.' : mode === 'error' ? 'No pudimos actualizar los resultados. Revisa tu conexión e inténtalo de nuevo.' : mode === 'offline' ? 'Sin conexión. Esta vista usa referencias sintéticas guardadas para la demostración.' : mode === 'carga' ? 'Actualizando proveedores…' : '';
-  return <Shell title="Explorar apoyo" back><div className="eyebrow">RESULTADOS · {municipality.toUpperCase()}</div><h1 className="page-title">Apoyo cerca de ti</h1><p className="page-lead">Personas y organizaciones de la comunidad que ofrecen recursos.</p><div className="filter-bar"><label className="filter-select">Tipo<IonSelect value={selectedType} onIonChange={e => { const next = new URLSearchParams(search); next.set('tipo', e.detail.value); setSearch(next); }} interface="popover">{kinds.map(k => <IonSelectOption key={k} value={k}>{kindLabel(k)}</IonSelectOption>)}</IonSelect></label><label className="filter-select">Servicio<IonSelect value={service} onIonChange={e => setService(e.detail.value)} interface="popover">{['Todos los servicios', 'Medicamentos', 'Alimentos', 'Artículos esenciales'].map(s => <IonSelectOption key={s} value={s}>{s}</IonSelectOption>)}</IonSelect></label><button className="filter-reset" onClick={() => { setService('Todos los servicios'); setSearch({ municipio: municipality, municipioId: selectedMunicipalityId }); }}>Limpiar</button></div>{dataSource === 'local' && <div className="state-banner" role="status">Vista sintética local: Appwrite no responde desde este entorno.</div>}{statusNote && <div className={`state-banner ${mode === 'error' ? 'state-error' : ''}`} role="status">{statusNote}{mode === 'error' && <button onClick={() => setMode('')}>Reintentar</button>}</div>}<div className="result-summary"><strong>{mode === 'vacio' ? 0 : filtered.length} opciones</strong><span>Ordenadas por relevancia</span></div>{mode !== 'vacio' && <div className="provider-list">{filtered.map(p => <ProviderCard key={p.facility.$id} provider={p} />)}</div>}<div className="demo-note">Los perfiles y estados que ves son sintéticos y sólo sirven para mostrar el recorrido.</div></Shell>;
+  return <Shell title="Explorar apoyo" back><div className="eyebrow">RESULTADOS · {municipality.toUpperCase()}</div><h1 className="page-title">Apoyo cerca de ti</h1><p className="page-lead">Personas y organizaciones de la comunidad que ofrecen recursos.</p><div className="filter-bar"><label className="filter-select">Tipo<IonSelect value={selectedType} onIonChange={e => { const next = new URLSearchParams(search); next.set('tipo', e.detail.value); setSearch(next); }} interface="popover">{kinds.map(k => <IonSelectOption key={k} value={k}>{kindLabel(k)}</IonSelectOption>)}</IonSelect></label><label className="filter-select">Servicio<IonSelect value={service} onIonChange={e => setService(e.detail.value)} interface="popover">{['Todos los servicios', 'Medicamentos', 'Alimentos', 'Artículos esenciales'].map(s => <IonSelectOption key={s} value={s}>{s}</IonSelectOption>)}</IonSelect></label><button className="filter-reset" onClick={() => { setService('Todos los servicios'); setSearch({ municipio: municipality, municipioId: selectedMunicipalityId }); }}>Limpiar</button></div>{dataSource === 'local' && <div className="state-banner" role="status">Vista sintética local: Appwrite no responde desde este entorno.</div>}{statusNote && <div className={`state-banner ${mode === 'error' ? 'state-error' : ''}`} role="status">{statusNote}{mode === 'error' && <button onClick={() => void reload()}>Reintentar</button>}</div>}<div className="result-summary"><strong>{mode === 'vacio' ? 0 : filtered.length} opciones</strong><button className="filter-reset" onClick={() => void reload()}>Actualizar</button></div>{mode !== 'vacio' && <div className="provider-list">{filtered.map(p => <ProviderCard key={p.facility.$id} provider={p} />)}</div>}<div className="demo-note">Los perfiles y estados que ves son sintéticos y sólo sirven para mostrar el recorrido.</div></Shell>;
 }
 
 function ProviderCard({ provider: p }: { provider: PreviewProvider }) {
@@ -198,24 +221,25 @@ function NewRequest({ text, setText, onSubmit }: { text: string; setText: (s: st
 }
 
 function Requests() {
-  const { requestRows, providerRows, dataSource } = useAppDemo();
+  const { requestRows, providerRows, dataSource, localStateIds, refreshRequests } = useAppDemo();
   const [tab, setTab] = useState('Activas');
+  useEffect(() => { void refreshRequests(); }, [refreshRequests]);
   const activeRows = requestRows.filter(row => row.status !== 'completed' && row.status !== 'declined');
   const pastRows = requestRows.filter(row => row.status === 'completed' || row.status === 'declined');
   const visibleRows = tab === 'Activas' ? activeRows : pastRows;
-  return <Shell title="Mis solicitudes" back><div className="eyebrow">TU ACTIVIDAD</div><h1 className="page-title">Mis solicitudes</h1><p className="page-lead">Consulta respuestas y actualizaciones de tus solicitudes.</p>{dataSource === 'local' && <div className="state-banner">Vista de demostración local: la conexión a Appwrite no está disponible.</div>}<div className="tabs"><button className={tab === 'Activas' ? 'selected' : ''} onClick={() => setTab('Activas')}>Activas <span>{activeRows.length}</span></button><button className={tab === 'Anteriores' ? 'selected' : ''} onClick={() => setTab('Anteriores')}>Anteriores</button></div>{visibleRows.length ? visibleRows.map(row => { const provider = providerRows.find(p => p.facility.$id === row.facilityId); const created = (row as AssistanceRequest & { $createdAt?: string }).$createdAt ?? sampleEvents[0].occurredAt; return <Link key={row.$id} to={`/seguimiento/${row.$id}`} className="request-card"><div className="request-card-top"><span className="type-pill pill-organization">{provider?.facility.name ?? 'Proveedor de demostración'}</span><span className="muted-text">{dateLabel(created)}</span></div><h2>Solicitud a {provider?.facility.name ?? 'proveedor de ayuda'}</h2><p>{row.description}</p><div className="request-card-bottom"><span className="status-dot" />{statusText[row.status]}<span className="card-arrow">→</span></div></Link>; }) : <div className="empty-state"><div className="empty-icon">⌁</div><h2>{tab === 'Activas' ? 'Aún no tienes solicitudes activas' : 'Aún no tienes solicitudes anteriores'}</h2><p>{tab === 'Activas' ? 'Cuando envíes una solicitud aparecerá aquí.' : 'Las solicitudes completadas aparecerán aquí.'}</p><Link className="text-link" to="/resultados">Explorar apoyo →</Link></div>}<div className="demo-note">Esta actividad usa identificadores y datos sintéticos de demostración; los controles de rol son simulados.</div></Shell>;
+  return <Shell title="Mis solicitudes" back><div className="eyebrow">TU ACTIVIDAD</div><h1 className="page-title">Mis solicitudes</h1><p className="page-lead">Consulta respuestas y actualizaciones de tus solicitudes.</p><div className="result-summary"><span>{dataSource === 'local' ? 'Vista sintética local' : 'Datos actualizados al abrir la pantalla'}</span><button className="filter-reset" onClick={() => void refreshRequests()}>Actualizar</button></div><div className="tabs"><button className={tab === 'Activas' ? 'selected' : ''} onClick={() => setTab('Activas')}>Activas <span>{activeRows.length}</span></button><button className={tab === 'Anteriores' ? 'selected' : ''} onClick={() => setTab('Anteriores')}>Anteriores</button></div>{visibleRows.length ? visibleRows.map(row => { const provider = providerRows.find(p => p.facility.$id === row.facilityId); const created = (row as AssistanceRequest & { $createdAt?: string }).$createdAt ?? sampleEvents[0].occurredAt; return <Link key={row.$id} to={`/seguimiento/${row.$id}`} className="request-card"><div className="request-card-top"><span className="type-pill pill-organization">{provider?.facility.name ?? 'Proveedor de demostración'}</span><span className="muted-text">{dateLabel(created)}</span></div><h2>Solicitud a {provider?.facility.name ?? 'proveedor de ayuda'}</h2><p>{row.description}</p>{localStateIds.includes(row.$id) && <small className="muted-text">Cambios sólo en esta sesión</small>}<div className="request-card-bottom"><span className="status-dot" />{statusText[row.status]}<span className="card-arrow">→</span></div></Link>; }) : <div className="empty-state"><div className="empty-icon">⌁</div><h2>{tab === 'Activas' ? 'Aún no tienes solicitudes activas' : 'Aún no tienes solicitudes anteriores'}</h2><p>{tab === 'Activas' ? 'Cuando envíes una solicitud aparecerá aquí.' : 'Las solicitudes completadas aparecerán aquí.'}</p><Link className="text-link" to="/resultados">Explorar apoyo →</Link></div>}<div className="demo-note">Esta actividad usa identificadores y datos sintéticos de demostración; los controles de rol son simulados.</div></Shell>;
 }
 
 function Tracking() {
   const { id } = useParams();
-  const { requestRows, activeRequest, requestEvents, providerRows, dataSource, respond, refreshRequest } = useAppDemo();
+  const { requestRows, activeRequest, requestEvents, providerRows, localStateIds, dataSource, respond, refreshRequest } = useAppDemo();
   useEffect(() => { if (id) void refreshRequest(id); }, [id, refreshRequest]);
   const request = requestRows.find(row => row.$id === id) ?? (activeRequest.$id === id ? activeRequest : sampleRequest);
   const provider = providerRows.find(row => row.facility.$id === request.facilityId) ?? providers.find(row => row.facility.$id === request.facilityId) ?? providers[0];
   const events = activeRequest.$id === request.$id ? requestEvents : request.$id === sampleRequest.$id ? sampleEvents : [];
   const visibleEvents = request.status === 'submitted' ? events.filter(event => event.eventType === 'submitted') : events;
   const created = (request as AssistanceRequest & { $createdAt?: string }).$createdAt ?? events[0]?.occurredAt ?? sampleEvents[0].occurredAt;
-  return <Shell title="Seguimiento" back><div className="eyebrow">SOLICITUD · {request.$id.slice(0, 12).toUpperCase()}</div><h1 className="page-title">Tu solicitud</h1><p className="page-lead">Creada {dateLabel(created)}</p>{dataSource === 'local' && <div className="state-banner">Esta solicitud sólo está disponible en esta sesión de demostración.</div>}<section className="content-card tracking-card"><div className="tracking-head"><div><span className="type-pill pill-organization">{provider.facility.name}</span><h2>{request.description}</h2></div><span className="status-chip">{statusText[request.status]}</span></div><div className="timeline">{visibleEvents.map((item, i) => <div className="timeline-item" key={item.$id}><span className={`timeline-dot ${i === visibleEvents.length - 1 ? 'active' : ''}`} /><div><strong>{statusText[item.eventType]}</strong><small>{dateLabel(item.occurredAt)} · {item.actorId === 'demo-citizen' ? 'Tú' : 'Proveedor de demostración'}</small>{item.responseNote && request.status !== 'submitted' && <p className="response-note">“{item.responseNote}”</p>}</div></div>)}</div>{request.status === 'submitted' && <button className="button button-outline" onClick={() => void respond(request.$id)}>Simular respuesta del proveedor</button>}</section><div className="notice"><span>ⓘ</span> Esta respuesta es sintética. Una solicitud enviada no confirma disponibilidad ni garantiza atención.</div><Link to="/solicitudes" className="text-link">← Volver a mis solicitudes</Link></Shell>;
+  return <Shell title="Seguimiento" back><div className="eyebrow">SOLICITUD · {request.$id.slice(0, 12).toUpperCase()}</div><h1 className="page-title">Tu solicitud</h1><p className="page-lead">Creada {dateLabel(created)}</p>{localStateIds.includes(request.$id) && <div className="state-banner">Este estado sólo se conserva en esta sesión; Appwrite no confirmó el cambio.</div>}<button className="filter-reset" onClick={() => void refreshRequest(request.$id)}>Actualizar estado</button><section className="content-card tracking-card"><div className="tracking-head"><div><span className="type-pill pill-organization">{provider.facility.name}</span><h2>{request.description}</h2></div><span className="status-chip">{statusText[request.status]}</span></div><div className="timeline">{visibleEvents.map((item, i) => <div className="timeline-item" key={item.$id}><span className={`timeline-dot ${i === visibleEvents.length - 1 ? 'active' : ''}`} /><div><strong>{statusText[item.eventType]}</strong><small>{dateLabel(item.occurredAt)} · {item.actorId === 'demo-citizen' ? 'Tú' : 'Proveedor de demostración'}</small>{item.responseNote && request.status !== 'submitted' && <p className="response-note">“{item.responseNote}”</p>}</div></div>)}</div>{request.status === 'submitted' && <button className="button button-outline" onClick={() => void respond(request.$id)}>Simular respuesta del proveedor</button>}</section><div className="notice"><span>ⓘ</span> Esta respuesta es sintética. Una solicitud enviada no confirma disponibilidad ni garantiza atención.</div><Link to="/solicitudes" className="text-link">← Volver a mis solicitudes</Link></Shell>;
 }
 
 function Help() { return <Shell title="Ayuda y seguridad" back><div className="eyebrow">ESTAMOS PARA ORIENTARTE</div><h1 className="page-title">Ayuda para usar Pulso PR.</h1><p className="page-lead">Conoce el alcance de esta herramienta y dónde buscar ayuda urgente.</p><div className="help-grid"><section className="content-card emergency-card"><span className="help-icon">!</span><span className="eyebrow">EMERGENCIA</span><h2>¿Hay peligro inmediato?</h2><p>Pulso PR no atiende emergencias. Si alguien está en peligro inmediato, llama al servicio oficial de emergencias.</p><a className="button button-primary" href="tel:911">Llamar al 9-1-1</a></section><section className="content-card"><span className="eyebrow">SOBRE PULSO PR</span><h2>Coordinación comunitaria, no urgente.</h2><p>La información es compartida por proveedores de ayuda. Verifica directamente horarios y disponibilidad antes de salir.</p><div className="detail-row"><span>Datos mostrados</span><strong>Sintéticos · demostración</strong></div><div className="detail-row"><span>Mensajes</span><strong>No se envían automáticamente</strong></div></section><section className="content-card"><span className="eyebrow">CONTACTO</span><h2>¿Necesitas orientación?</h2><p>Por ahora este prototipo no cuenta con un canal de soporte conectado.</p><Link to="/resultados" className="text-link">Volver a explorar proveedores →</Link></section></div></Shell>; }
