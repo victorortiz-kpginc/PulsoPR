@@ -1,0 +1,28 @@
+{
+  "dependencies": {
+    "@capacitor/cli": "8.5.3",
+    "@capacitor/core": "8.5.3",
+    "@ionic/cli": "7.2.1",
+    "@ionic/react": "9.0.7",
+    "@ionic/react-router": "9.0.7",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "appwrite": "26.2.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-router": "6.30.6",
+    "react-router-dom": "6.30.6",
+    "typescript": "7.0.2",
+    "vite": "8.3.4"
+  },
+  "name": "pulso-pr-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "smoke:sdk": "node scripts/sdk-smoke.mjs"
+  }
+}
