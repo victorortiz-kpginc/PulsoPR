@@ -8,6 +8,38 @@
     "id": "hackathon-demo-team",
     "name": "Equipo ficticio del hackathon"
   },
+  "administrationTeam": {
+    "id": "pulso-pr-admins",
+    "name": "Administración Pulso PR"
+  },
+  "accounts": [
+    {
+      "id": "pulso-demo-citizen",
+      "email": "ciudadano@pulso-pr.test",
+      "name": "Ciudadano Pulso PR",
+      "password": "CiudadanoPR-Demo26!",
+      "role": "citizen",
+      "surface": "app"
+    },
+    {
+      "id": "pulso-demo-provider",
+      "email": "proveedor@pulso-pr.test",
+      "name": "Proveedor Pulso PR",
+      "password": "ProveedorPR-Demo26!",
+      "role": "provider",
+      "surface": "web",
+      "teamId": "hackathon-demo-team"
+    },
+    {
+      "id": "pulso-demo-admin",
+      "email": "administracion@pulso-pr.test",
+      "name": "Administración Pulso PR",
+      "password": "AdminPR-Demo26!",
+      "role": "admin",
+      "surface": "web",
+      "teamId": "pulso-pr-admins"
+    }
+  ],
   "documents": [
     {
       "collectionId": "facilities",
