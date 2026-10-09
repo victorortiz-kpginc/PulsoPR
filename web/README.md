@@ -14,6 +14,8 @@ dotnet build --no-restore
 dotnet run --no-build --no-launch-profile --urls http://localhost:5180
 ```
 
+On Windows PowerShell, use the same npm/dotnet commands without `source scripts/env.sh`; the local .NET 10 and Node executables are already available. Start with `dotnet run --no-build --no-launch-profile --urls http://localhost:5180` and open `/acceso` for the provider/admin demo.
+
 The generated local SDK bundle stays under `wwwroot/`; runtime loads public endpoint, project and database IDs from `wwwroot/appsettings.json`. Do not add keys or credentials to browser config.
 
 ## Browser validation
@@ -22,6 +24,12 @@ The generated local SDK bundle stays under `wwwroot/`; runtime loads public endp
 
 The UI-APPROVAL capture and gallery are at `../capture/web/index.md`; 33 post-approval PNGs are linked in its manifest. The full roster and gate evidence are in `../docs/web/UI-REVIEW.md` and `../docs/web/PROGRESS.md`.
 
+### Live synthetic dev smoke
+
+`WEB_LIVE_SMOKE=1 node scripts/live-smoke.cjs` explicitly opts into creating one new fictitious request and events in the verified dev project. It uses the citizen SDK contract to submit/read, then the actual web provider UI to acknowledge/confirm and the admin UI to read the persisted result. Existing requests, schema and ACLs are preserved; test records remain synthetic. Evidence is written to ignored `web/.evidence/live-smoke.json`.
+
+Both browser scripts need Playwright available on the host. Windows defaults to installed Edge; `BROWSER_CHANNEL` or `CHROMIUM_PATH` can select a browser. If Playwright comes from the bundled runtime, set `NODE_PATH` to the Node.js packages path returned by workspace dependencies. In PowerShell, set `$env:WEB_LIVE_SMOKE='1'` before invoking the live script. No browser/test packages are installed globally by these scripts.
+
 ## Demo-only limits
 
-Appwrite schema, collection ACLs and synthetic fixture setup remain backend-owned. This client trusts the demo's open collection ACLs, uses synthetic actor IDs, and does not make profile/status/history writes transactional. The project's public domain egress has been drafted in cloud environment settings but must be reviewed and published before live-runtime reads/writes can be validated. No site was deployed.
+Appwrite schema, collection ACLs and synthetic fixture setup remain backend-owned. This client trusts the demo's open collection ACLs, uses synthetic actor IDs, and does not make profile/status/history writes transactional. The local Windows browser successfully reached Appwrite and passed the live request/response smoke on 2026-10-09. The earlier cloud runtime's egress restriction is specific to that environment. No site was deployed. Data uses a snapshot of up to 100 documents per collection; reload to see changes from other clients.
