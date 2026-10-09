@@ -1,0 +1,999 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "v1.1",
+  "status": "desired_configuration",
+  "database": {
+    "id": "pulso-pr",
+    "name": "Pulso PR",
+    "apiFamily": "Databases",
+    "collectionsPerFacility": false,
+    "environmentSeparation": "Independent Appwrite projects; same database ID/name in each approved environment"
+  },
+  "collections": [
+    {
+      "id": "citizen_profiles",
+      "name": "CitizenProfiles",
+      "visibility": "demo-public",
+      "documentSecurity": true,
+      "permissions": [
+        "read(\"any\")",
+        "create(\"any\")",
+        "update(\"any\")",
+        "delete(\"any\")"
+      ],
+      "clientWrites": "enabled_synthetic_hackathon_only",
+      "documentIdentity": "$id equals native Auth user ID; no duplicate userId/email/password",
+      "attributes": [
+        {
+          "key": "locale",
+          "type": "enum",
+          "elements": [
+            "es",
+            "en"
+          ],
+          "required": true
+        },
+        {
+          "key": "emailNotificationsEnabled",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "key": "pushNotificationsEnabled",
+          "type": "boolean",
+          "required": true
+        }
+      ],
+      "indexes": [],
+      "references": {}
+    },
+    {
+      "id": "municipalities",
+      "name": "Municipalities",
+      "visibility": "public",
+      "documentSecurity": true,
+      "permissions": [
+        "read(\"any\")"
+      ],
+      "clientWrites": "disabled_pending_native_security_gate",
+      "documentIdentity": "Appwrite ID.unique generated before the first write; reuse on retry",
+      "attributes": [
+        {
+          "key": "code",
+          "type": "string",
+          "size": 16,
+          "required": true
+        },
+        {
+          "key": "name",
+          "type": "string",
+          "size": 160,
+          "required": true
+        }
+      ],
+      "indexes": [
+        {
+          "key": "uq_municipalities_code",
+          "type": "unique",
+          "attributes": [
+            "code"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "idx_municipalities_name",
+          "type": "key",
+          "attributes": [
+            "name"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ],
+      "references": {}
+    },
+    {
+      "id": "healthcare_services",
+      "name": "HealthcareServices",
+      "visibility": "public",
+      "documentSecurity": true,
+      "permissions": [
+        "read(\"any\")"
+      ],
+      "clientWrites": "disabled_pending_native_security_gate",
+      "documentIdentity": "Appwrite ID.unique generated before the first write; reuse on retry",
+      "attributes": [
+        {
+          "key": "code",
+          "type": "string",
+          "size": 64,
+          "required": true
+        },
+        {
+          "key": "nameEs",
+          "type": "string",
+          "size": 160,
+          "required": true
+        },
+        {
+          "key": "nameEn",
+          "type": "string",
+          "size": 160,
+          "required": true
+        },
+        {
+          "key": "description",
+          "type": "string",
+          "size": 500,
+          "required": false
+        }
+      ],
+      "indexes": [
+        {
+          "key": "uq_services_code",
+          "type": "unique",
+          "attributes": [
+            "code"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "idx_services_name_es",
+          "type": "key",
+          "attributes": [
+            "nameEs"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "idx_services_name_en",
+          "type": "key",
+          "attributes": [
+            "nameEn"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ],
+      "references": {}
+    },
+    {
+      "id": "facilities",
+      "name": "Facilities",
+      "visibility": "demo-public",
+      "documentSecurity": true,
+      "permissions": [
+        "read(\"any\")",
+        "create(\"any\")",
+        "update(\"any\")",
+        "delete(\"any\")"
+      ],
+      "clientWrites": "enabled_synthetic_hackathon_only",
+      "documentIdentity": "Appwrite ID.unique generated before the first write; reuse on retry",
+      "attributes": [
+        {
+          "key": "name",
+          "type": "string",
+          "size": 160,
+          "required": true
+        },
+        {
+          "key": "municipalityId",
+          "type": "string",
+          "size": 36,
+          "required": true
+        },
+        {
+          "key": "address",
+          "type": "string",
+          "size": 500,
+          "required": true
+        },
+        {
+          "key": "latitude",
+          "type": "double",
+          "required": false,
+          "min": -90,
+          "max": 90
+        },
+        {
+          "key": "longitude",
+          "type": "double",
+          "required": false,
+          "min": -180,
+          "max": 180
+        },
+        {
+          "key": "phone",
+          "type": "string",
+          "size": 32,
+          "required": false
+        },
+        {
+          "key": "hours",
+          "type": "string",
+          "size": 500,
+          "required": true
+        },
+        {
+          "key": "teamId",
+          "type": "string",
+          "size": 36,
+          "required": true
+        },
+        {
+          "key": "imageFileId",
+          "type": "string",
+          "size": 36,
+          "required": false
+        }
+      ],
+      "indexes": [
+        {
+          "key": "idx_facilities_municipality_name",
+          "type": "key",
+          "attributes": [
+            "municipalityId",
+            "name"
+          ],
+          "orders": [
+            "ASC",
+            "ASC"
+          ]
+        },
+        {
+          "key": "uq_facilities_team",
+          "type": "unique",
+          "attributes": [
+            "teamId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "ft_facilities_name",
+          "type": "fulltext",
+          "attributes": [
+            "name"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ],
+      "references": {
+        "municipalityId": "municipalities.$id",
+        "teamId": "Appwrite Teams.$id (one native team per facility)",
+        "imageFileId": "Appwrite Storage facility-images.$id"
+      }
+    },
+    {
+      "id": "facility_services",
+      "name": "FacilityServices",
+      "visibility": "demo-public",
+      "documentSecurity": true,
+      "permissions": [
+        "read(\"any\")",
+        "create(\"any\")",
+        "update(\"any\")",
+        "delete(\"any\")"
+      ],
+      "clientWrites": "enabled_synthetic_hackathon_only",
+      "documentIdentity": "Appwrite ID.unique generated before the first write; reuse on retry",
+      "attributes": [
+        {
+          "key": "facilityId",
+          "type": "string",
+          "size": 36,
+          "required": true
+        },
+        {
+          "key": "serviceId",
+          "type": "string",
+          "size": 36,
+          "required": true
+        },
+        {
+          "key": "availability",
+          "type": "enum",
+          "elements": [
+            "available",
+            "limited",
+            "unavailable",
+            "unknown"
+          ],
+          "required": true
+        },
+        {
+          "key": "note",
+          "type": "string",
+          "size": 500,
+          "required": false
+        }
+      ],
+      "indexes": [
+        {
+          "key": "uq_facility_service",
+          "type": "unique",
+          "attributes": [
+            "facilityId",
+            "serviceId"
+          ],
+          "orders": [
+            "ASC",
+            "ASC"
+          ]
+        },
+        {
+          "key": "idx_service_availability",
+          "type": "key",
+          "attributes": [
+            "serviceId",
+            "availability"
+          ],
+          "orders": [
+            "ASC",
+            "ASC"
+          ]
+        }
+      ],
+      "references": {
+        "facilityId": "facilities.$id",
+        "serviceId": "healthcare_services.$id"
+      }
+    },
+    {
+      "id": "facility_operational_status",
+      "name": "FacilityOperationalStatus",
+      "visibility": "demo-public",
+      "documentSecurity": true,
+      "permissions": [
+        "read(\"any\")",
+        "create(\"any\")",
+        "update(\"any\")",
+        "delete(\"any\")"
+      ],
+      "clientWrites": "enabled_synthetic_hackathon_only",
+      "documentIdentity": "$id equals facilityId; one current record per facility (application invariant)",
+      "attributes": [
+        {
+          "key": "facilityId",
+          "type": "string",
+          "size": 36,
+          "required": true
+        },
+        {
+          "key": "operationalState",
+          "type": "enum",
+          "elements": [
+            "operational",
+            "limited",
+            "unavailable",
+            "unknown"
+          ],
+          "required": true
+        },
+        {
+          "key": "electricityState",
+          "type": "enum",
+          "elements": [
+            "available",
+            "unavailable",
+            "unknown"
+          ],
+          "required": true
+        },
+        {
+          "key": "generatorState",
+          "type": "enum",
+          "elements": [
+            "available",
+            "unavailable",
+            "unknown"
+          ],
+          "required": true
+        },
+        {
+          "key": "note",
+          "type": "string",
+          "size": 500,
+          "required": false
+        },
+        {
+          "key": "interruptionStart",
+          "type": "datetime",
+          "required": false
+        },
+        {
+          "key": "interruptionEnd",
+          "type": "datetime",
+          "required": false
+        }
+      ],
+      "indexes": [
+        {
+          "key": "uq_operational_facility",
+          "type": "unique",
+          "attributes": [
+            "facilityId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "idx_operational_state",
+          "type": "key",
+          "attributes": [
+            "operationalState"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ],
+      "references": {
+        "facilityId": "facilities.$id"
+      }
+    },
+    {
+      "id": "facility_status_history",
+      "name": "FacilityStatusHistory",
+      "visibility": "demo-public",
+      "documentSecurity": true,
+      "permissions": [
+        "read(\"any\")",
+        "create(\"any\")",
+        "update(\"any\")",
+        "delete(\"any\")"
+      ],
+      "clientWrites": "enabled_synthetic_hackathon_only",
+      "documentIdentity": "Appwrite ID.unique generated before the first write; reuse on retry",
+      "attributes": [
+        {
+          "key": "facilityId",
+          "type": "string",
+          "size": 36,
+          "required": true
+        },
+        {
+          "key": "operationalState",
+          "type": "enum",
+          "elements": [
+            "operational",
+            "limited",
+            "unavailable",
+            "unknown"
+          ],
+          "required": true
+        },
+        {
+          "key": "electricityState",
+          "type": "enum",
+          "elements": [
+            "available",
+            "unavailable",
+            "unknown"
+          ],
+          "required": true
+        },
+        {
+          "key": "generatorState",
+          "type": "enum",
+          "elements": [
+            "available",
+            "unavailable",
+            "unknown"
+          ],
+          "required": true
+        },
+        {
+          "key": "note",
+          "type": "string",
+          "size": 500,
+          "required": false
+        },
+        {
+          "key": "interruptionStart",
+          "type": "datetime",
+          "required": false
+        },
+        {
+          "key": "interruptionEnd",
+          "type": "datetime",
+          "required": false
+        },
+        {
+          "key": "source",
+          "type": "enum",
+          "elements": [
+            "FacilityConfirmed",
+            "CoordinatorConfirmed",
+            "CommunityReported"
+          ],
+          "required": true
+        },
+        {
+          "key": "reportedAt",
+          "type": "datetime",
+          "required": true
+        }
+      ],
+      "indexes": [
+        {
+          "key": "idx_history_facility_time",
+          "type": "key",
+          "attributes": [
+            "facilityId",
+            "reportedAt"
+          ],
+          "orders": [
+            "ASC",
+            "DESC"
+          ]
+        }
+      ],
+      "references": {
+        "facilityId": "facilities.$id"
+      }
+    },
+    {
+      "id": "resource_availability",
+      "name": "ResourceAvailability",
+      "visibility": "demo-public",
+      "documentSecurity": true,
+      "permissions": [
+        "read(\"any\")",
+        "create(\"any\")",
+        "update(\"any\")",
+        "delete(\"any\")"
+      ],
+      "clientWrites": "enabled_synthetic_hackathon_only",
+      "documentIdentity": "Appwrite ID.unique generated before the first write; reuse on retry",
+      "attributes": [
+        {
+          "key": "facilityId",
+          "type": "string",
+          "size": 36,
+          "required": true
+        },
+        {
+          "key": "resourceType",
+          "type": "string",
+          "size": 64,
+          "required": true
+        },
+        {
+          "key": "availability",
+          "type": "enum",
+          "elements": [
+            "available",
+            "limited",
+            "unavailable",
+            "unknown"
+          ],
+          "required": true
+        },
+        {
+          "key": "note",
+          "type": "string",
+          "size": 500,
+          "required": false
+        }
+      ],
+      "indexes": [
+        {
+          "key": "uq_facility_resource",
+          "type": "unique",
+          "attributes": [
+            "facilityId",
+            "resourceType"
+          ],
+          "orders": [
+            "ASC",
+            "ASC"
+          ]
+        },
+        {
+          "key": "idx_resource_availability",
+          "type": "key",
+          "attributes": [
+            "resourceType",
+            "availability"
+          ],
+          "orders": [
+            "ASC",
+            "ASC"
+          ]
+        }
+      ],
+      "references": {
+        "facilityId": "facilities.$id"
+      }
+    },
+    {
+      "id": "assistance_requests",
+      "name": "AssistanceRequests",
+      "visibility": "demo-public",
+      "documentSecurity": true,
+      "permissions": [
+        "read(\"any\")",
+        "create(\"any\")",
+        "update(\"any\")",
+        "delete(\"any\")"
+      ],
+      "clientWrites": "enabled_synthetic_hackathon_only",
+      "documentIdentity": "Appwrite ID.unique generated before the first write; reuse on retry",
+      "attributes": [
+        {
+          "key": "citizenId",
+          "type": "string",
+          "size": 36,
+          "required": true
+        },
+        {
+          "key": "facilityId",
+          "type": "string",
+          "size": 36,
+          "required": true
+        },
+        {
+          "key": "serviceId",
+          "type": "string",
+          "size": 36,
+          "required": true
+        },
+        {
+          "key": "municipalityId",
+          "type": "string",
+          "size": 36,
+          "required": true
+        },
+        {
+          "key": "description",
+          "type": "string",
+          "size": 500,
+          "required": true
+        },
+        {
+          "key": "status",
+          "type": "enum",
+          "elements": [
+            "submitted",
+            "acknowledged",
+            "confirmed",
+            "declined",
+            "completed",
+            "cancelled"
+          ],
+          "required": true
+        }
+      ],
+      "indexes": [
+        {
+          "key": "idx_requests_citizen",
+          "type": "key",
+          "attributes": [
+            "citizenId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "idx_requests_facility_status",
+          "type": "key",
+          "attributes": [
+            "facilityId",
+            "status"
+          ],
+          "orders": [
+            "ASC",
+            "ASC"
+          ]
+        },
+        {
+          "key": "idx_requests_municipality_status",
+          "type": "key",
+          "attributes": [
+            "municipalityId",
+            "status"
+          ],
+          "orders": [
+            "ASC",
+            "ASC"
+          ]
+        }
+      ],
+      "references": {
+        "citizenId": "Appwrite Auth.$id",
+        "facilityId": "facilities.$id",
+        "serviceId": "healthcare_services.$id",
+        "municipalityId": "municipalities.$id"
+      }
+    },
+    {
+      "id": "assistance_request_events",
+      "name": "AssistanceRequestEvents",
+      "visibility": "demo-public",
+      "documentSecurity": true,
+      "permissions": [
+        "read(\"any\")",
+        "create(\"any\")",
+        "update(\"any\")",
+        "delete(\"any\")"
+      ],
+      "clientWrites": "enabled_synthetic_hackathon_only",
+      "documentIdentity": "Appwrite ID.unique generated before the first write; reuse on retry",
+      "attributes": [
+        {
+          "key": "requestId",
+          "type": "string",
+          "size": 36,
+          "required": true
+        },
+        {
+          "key": "eventType",
+          "type": "enum",
+          "elements": [
+            "submitted",
+            "acknowledged",
+            "confirmed",
+            "declined",
+            "completed",
+            "cancelled"
+          ],
+          "required": true
+        },
+        {
+          "key": "actorId",
+          "type": "string",
+          "size": 36,
+          "required": true
+        },
+        {
+          "key": "occurredAt",
+          "type": "datetime",
+          "required": true
+        },
+        {
+          "key": "responseNote",
+          "type": "string",
+          "size": 500,
+          "required": false
+        }
+      ],
+      "indexes": [
+        {
+          "key": "idx_request_events_time",
+          "type": "key",
+          "attributes": [
+            "requestId",
+            "occurredAt"
+          ],
+          "orders": [
+            "ASC",
+            "ASC"
+          ]
+        }
+      ],
+      "references": {
+        "requestId": "assistance_requests.$id",
+        "actorId": "Appwrite Auth.$id"
+      }
+    },
+    {
+      "id": "facility_confirmations",
+      "name": "FacilityConfirmations",
+      "visibility": "demo-public",
+      "documentSecurity": true,
+      "permissions": [
+        "read(\"any\")",
+        "create(\"any\")",
+        "update(\"any\")",
+        "delete(\"any\")"
+      ],
+      "clientWrites": "enabled_synthetic_hackathon_only",
+      "documentIdentity": "Appwrite ID.unique generated before the first write; reuse on retry",
+      "attributes": [
+        {
+          "key": "facilityId",
+          "type": "string",
+          "size": 36,
+          "required": true
+        },
+        {
+          "key": "source",
+          "type": "enum",
+          "elements": [
+            "FacilityConfirmed",
+            "CoordinatorConfirmed",
+            "CommunityReported"
+          ],
+          "required": true
+        },
+        {
+          "key": "confirmedAt",
+          "type": "datetime",
+          "required": true
+        },
+        {
+          "key": "validUntil",
+          "type": "datetime",
+          "required": true
+        },
+        {
+          "key": "note",
+          "type": "string",
+          "size": 500,
+          "required": false
+        }
+      ],
+      "indexes": [
+        {
+          "key": "idx_confirmations_facility_time",
+          "type": "key",
+          "attributes": [
+            "facilityId",
+            "confirmedAt"
+          ],
+          "orders": [
+            "ASC",
+            "DESC"
+          ]
+        },
+        {
+          "key": "idx_confirmations_expiry",
+          "type": "key",
+          "attributes": [
+            "validUntil"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ],
+      "references": {
+        "facilityId": "facilities.$id"
+      }
+    },
+    {
+      "id": "operational_audit_events",
+      "name": "OperationalAuditEvents",
+      "visibility": "demo-public",
+      "documentSecurity": true,
+      "permissions": [
+        "read(\"any\")",
+        "create(\"any\")",
+        "update(\"any\")",
+        "delete(\"any\")"
+      ],
+      "clientWrites": "enabled_synthetic_hackathon_only",
+      "documentIdentity": "Appwrite ID.unique generated before the first write; reuse on retry",
+      "attributes": [
+        {
+          "key": "resourceType",
+          "type": "string",
+          "size": 64,
+          "required": true
+        },
+        {
+          "key": "resourceId",
+          "type": "string",
+          "size": 36,
+          "required": true
+        },
+        {
+          "key": "action",
+          "type": "enum",
+          "elements": [
+            "create",
+            "update",
+            "delete",
+            "confirm",
+            "acknowledge",
+            "decline",
+            "complete",
+            "cancel",
+            "membership_granted",
+            "membership_revoked"
+          ],
+          "required": true
+        },
+        {
+          "key": "actorId",
+          "type": "string",
+          "size": 36,
+          "required": true
+        },
+        {
+          "key": "occurredAt",
+          "type": "datetime",
+          "required": true
+        },
+        {
+          "key": "correlationId",
+          "type": "string",
+          "size": 36,
+          "required": false
+        }
+      ],
+      "indexes": [
+        {
+          "key": "idx_audit_resource_time",
+          "type": "key",
+          "attributes": [
+            "resourceType",
+            "resourceId",
+            "occurredAt"
+          ],
+          "orders": [
+            "ASC",
+            "ASC",
+            "ASC"
+          ]
+        },
+        {
+          "key": "idx_audit_actor_time",
+          "type": "key",
+          "attributes": [
+            "actorId",
+            "occurredAt"
+          ],
+          "orders": [
+            "ASC",
+            "ASC"
+          ]
+        }
+      ],
+      "references": {
+        "actorId": "Appwrite Auth.$id",
+        "resourceId": "Target public/native resource identified by resourceType"
+      }
+    }
+  ],
+  "buckets": [
+    {
+      "id": "facility-images",
+      "name": "Pulso PR Assets",
+      "fileSecurity": true,
+      "permissions": [
+        "read(\"any\")",
+        "create(\"any\")",
+        "update(\"any\")",
+        "delete(\"any\")"
+      ],
+      "maximumFileSize": 5242880,
+      "allowedFileExtensions": [
+        "jpg",
+        "jpeg",
+        "png",
+        "pdf"
+      ],
+      "clientWrites": "enabled_synthetic_hackathon_only",
+      "compression": "none",
+      "encryption": true,
+      "antivirus": true,
+      "transformations": true,
+      "scope": "Public synthetic demo files only; shared free-plan bucket; no private file guarantee in hackathon mode"
+    }
+  ],
+  "metadata": "Native $id/$createdAt/$updatedAt/$permissions are not custom attributes",
+  "referencePolicy": "String IDs are logical references; no native relationship or foreign key guarantees claimed",
+  "requestTimeQueries": "Use native $createdAt order and cursor; validate compound filters with the target API before release; no duplicate timestamp attribute",
+  "securityGate": "Hackathon: synthetic domain public CRUD, UI roles simulated; production security gates deferred. Function remains optional.",
+  "storageAliases": {
+    "facility-images": "facility-images",
+    "supporting-documents": "facility-images"
+  },
+  "accessMode": "hackathon-open-synthetic"
+}

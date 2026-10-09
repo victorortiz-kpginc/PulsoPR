@@ -1,0 +1,12 @@
+{
+  "name": "pulso-pr-backend-validation",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test *.test.mjs && npm --prefix functions/domain-commands test"
+  },
+  "dependencies": {
+    "appwrite": "26.2.0"
+  }
+}

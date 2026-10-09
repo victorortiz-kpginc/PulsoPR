@@ -1,0 +1,559 @@
+{
+  "source": "U.S. Census Bureau 2025 Gazetteer Counties",
+  "sourceUrl": "https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2025_Gazetteer/2025_Gaz_counties_national.zip",
+  "sourcePage": "https://www.census.gov/geographies/reference-files/2025/geo/gazetter-file.html",
+  "licenseSource": "https://www2.census.gov/foia/ds_policies/ds027.pdf",
+  "sourceSha256": "4c90d0f805779923b5958ab13d0c1e9b99fe4932b786bfcf75dd739bb2dcb4ea",
+  "retrievedAt": "2026-10-09T04:52:30.653176+00:00",
+  "normalization": "Select USPS=PR; preserve GEOID (state 72 + county code) as code/documentId; remove legal suffix Municipio from NAME; do not import demographic data or coordinates",
+  "collectionId": "municipalities",
+  "count": 78,
+  "records": [
+    {
+      "documentId": "72001",
+      "data": {
+        "code": "72001",
+        "name": "Adjuntas"
+      }
+    },
+    {
+      "documentId": "72003",
+      "data": {
+        "code": "72003",
+        "name": "Aguada"
+      }
+    },
+    {
+      "documentId": "72005",
+      "data": {
+        "code": "72005",
+        "name": "Aguadilla"
+      }
+    },
+    {
+      "documentId": "72007",
+      "data": {
+        "code": "72007",
+        "name": "Aguas Buenas"
+      }
+    },
+    {
+      "documentId": "72009",
+      "data": {
+        "code": "72009",
+        "name": "Aibonito"
+      }
+    },
+    {
+      "documentId": "72011",
+      "data": {
+        "code": "72011",
+        "name": "Añasco"
+      }
+    },
+    {
+      "documentId": "72013",
+      "data": {
+        "code": "72013",
+        "name": "Arecibo"
+      }
+    },
+    {
+      "documentId": "72015",
+      "data": {
+        "code": "72015",
+        "name": "Arroyo"
+      }
+    },
+    {
+      "documentId": "72017",
+      "data": {
+        "code": "72017",
+        "name": "Barceloneta"
+      }
+    },
+    {
+      "documentId": "72019",
+      "data": {
+        "code": "72019",
+        "name": "Barranquitas"
+      }
+    },
+    {
+      "documentId": "72021",
+      "data": {
+        "code": "72021",
+        "name": "Bayamón"
+      }
+    },
+    {
+      "documentId": "72023",
+      "data": {
+        "code": "72023",
+        "name": "Cabo Rojo"
+      }
+    },
+    {
+      "documentId": "72025",
+      "data": {
+        "code": "72025",
+        "name": "Caguas"
+      }
+    },
+    {
+      "documentId": "72027",
+      "data": {
+        "code": "72027",
+        "name": "Camuy"
+      }
+    },
+    {
+      "documentId": "72029",
+      "data": {
+        "code": "72029",
+        "name": "Canóvanas"
+      }
+    },
+    {
+      "documentId": "72031",
+      "data": {
+        "code": "72031",
+        "name": "Carolina"
+      }
+    },
+    {
+      "documentId": "72033",
+      "data": {
+        "code": "72033",
+        "name": "Cataño"
+      }
+    },
+    {
+      "documentId": "72035",
+      "data": {
+        "code": "72035",
+        "name": "Cayey"
+      }
+    },
+    {
+      "documentId": "72037",
+      "data": {
+        "code": "72037",
+        "name": "Ceiba"
+      }
+    },
+    {
+      "documentId": "72039",
+      "data": {
+        "code": "72039",
+        "name": "Ciales"
+      }
+    },
+    {
+      "documentId": "72041",
+      "data": {
+        "code": "72041",
+        "name": "Cidra"
+      }
+    },
+    {
+      "documentId": "72043",
+      "data": {
+        "code": "72043",
+        "name": "Coamo"
+      }
+    },
+    {
+      "documentId": "72045",
+      "data": {
+        "code": "72045",
+        "name": "Comerío"
+      }
+    },
+    {
+      "documentId": "72047",
+      "data": {
+        "code": "72047",
+        "name": "Corozal"
+      }
+    },
+    {
+      "documentId": "72049",
+      "data": {
+        "code": "72049",
+        "name": "Culebra"
+      }
+    },
+    {
+      "documentId": "72051",
+      "data": {
+        "code": "72051",
+        "name": "Dorado"
+      }
+    },
+    {
+      "documentId": "72053",
+      "data": {
+        "code": "72053",
+        "name": "Fajardo"
+      }
+    },
+    {
+      "documentId": "72054",
+      "data": {
+        "code": "72054",
+        "name": "Florida"
+      }
+    },
+    {
+      "documentId": "72055",
+      "data": {
+        "code": "72055",
+        "name": "Guánica"
+      }
+    },
+    {
+      "documentId": "72057",
+      "data": {
+        "code": "72057",
+        "name": "Guayama"
+      }
+    },
+    {
+      "documentId": "72059",
+      "data": {
+        "code": "72059",
+        "name": "Guayanilla"
+      }
+    },
+    {
+      "documentId": "72061",
+      "data": {
+        "code": "72061",
+        "name": "Guaynabo"
+      }
+    },
+    {
+      "documentId": "72063",
+      "data": {
+        "code": "72063",
+        "name": "Gurabo"
+      }
+    },
+    {
+      "documentId": "72065",
+      "data": {
+        "code": "72065",
+        "name": "Hatillo"
+      }
+    },
+    {
+      "documentId": "72067",
+      "data": {
+        "code": "72067",
+        "name": "Hormigueros"
+      }
+    },
+    {
+      "documentId": "72069",
+      "data": {
+        "code": "72069",
+        "name": "Humacao"
+      }
+    },
+    {
+      "documentId": "72071",
+      "data": {
+        "code": "72071",
+        "name": "Isabela"
+      }
+    },
+    {
+      "documentId": "72073",
+      "data": {
+        "code": "72073",
+        "name": "Jayuya"
+      }
+    },
+    {
+      "documentId": "72075",
+      "data": {
+        "code": "72075",
+        "name": "Juana Díaz"
+      }
+    },
+    {
+      "documentId": "72077",
+      "data": {
+        "code": "72077",
+        "name": "Juncos"
+      }
+    },
+    {
+      "documentId": "72079",
+      "data": {
+        "code": "72079",
+        "name": "Lajas"
+      }
+    },
+    {
+      "documentId": "72081",
+      "data": {
+        "code": "72081",
+        "name": "Lares"
+      }
+    },
+    {
+      "documentId": "72083",
+      "data": {
+        "code": "72083",
+        "name": "Las Marías"
+      }
+    },
+    {
+      "documentId": "72085",
+      "data": {
+        "code": "72085",
+        "name": "Las Piedras"
+      }
+    },
+    {
+      "documentId": "72087",
+      "data": {
+        "code": "72087",
+        "name": "Loíza"
+      }
+    },
+    {
+      "documentId": "72089",
+      "data": {
+        "code": "72089",
+        "name": "Luquillo"
+      }
+    },
+    {
+      "documentId": "72091",
+      "data": {
+        "code": "72091",
+        "name": "Manatí"
+      }
+    },
+    {
+      "documentId": "72093",
+      "data": {
+        "code": "72093",
+        "name": "Maricao"
+      }
+    },
+    {
+      "documentId": "72095",
+      "data": {
+        "code": "72095",
+        "name": "Maunabo"
+      }
+    },
+    {
+      "documentId": "72097",
+      "data": {
+        "code": "72097",
+        "name": "Mayagüez"
+      }
+    },
+    {
+      "documentId": "72099",
+      "data": {
+        "code": "72099",
+        "name": "Moca"
+      }
+    },
+    {
+      "documentId": "72101",
+      "data": {
+        "code": "72101",
+        "name": "Morovis"
+      }
+    },
+    {
+      "documentId": "72103",
+      "data": {
+        "code": "72103",
+        "name": "Naguabo"
+      }
+    },
+    {
+      "documentId": "72105",
+      "data": {
+        "code": "72105",
+        "name": "Naranjito"
+      }
+    },
+    {
+      "documentId": "72107",
+      "data": {
+        "code": "72107",
+        "name": "Orocovis"
+      }
+    },
+    {
+      "documentId": "72109",
+      "data": {
+        "code": "72109",
+        "name": "Patillas"
+      }
+    },
+    {
+      "documentId": "72111",
+      "data": {
+        "code": "72111",
+        "name": "Peñuelas"
+      }
+    },
+    {
+      "documentId": "72113",
+      "data": {
+        "code": "72113",
+        "name": "Ponce"
+      }
+    },
+    {
+      "documentId": "72115",
+      "data": {
+        "code": "72115",
+        "name": "Quebradillas"
+      }
+    },
+    {
+      "documentId": "72117",
+      "data": {
+        "code": "72117",
+        "name": "Rincón"
+      }
+    },
+    {
+      "documentId": "72119",
+      "data": {
+        "code": "72119",
+        "name": "Río Grande"
+      }
+    },
+    {
+      "documentId": "72121",
+      "data": {
+        "code": "72121",
+        "name": "Sabana Grande"
+      }
+    },
+    {
+      "documentId": "72123",
+      "data": {
+        "code": "72123",
+        "name": "Salinas"
+      }
+    },
+    {
+      "documentId": "72125",
+      "data": {
+        "code": "72125",
+        "name": "San Germán"
+      }
+    },
+    {
+      "documentId": "72127",
+      "data": {
+        "code": "72127",
+        "name": "San Juan"
+      }
+    },
+    {
+      "documentId": "72129",
+      "data": {
+        "code": "72129",
+        "name": "San Lorenzo"
+      }
+    },
+    {
+      "documentId": "72131",
+      "data": {
+        "code": "72131",
+        "name": "San Sebastián"
+      }
+    },
+    {
+      "documentId": "72133",
+      "data": {
+        "code": "72133",
+        "name": "Santa Isabel"
+      }
+    },
+    {
+      "documentId": "72135",
+      "data": {
+        "code": "72135",
+        "name": "Toa Alta"
+      }
+    },
+    {
+      "documentId": "72137",
+      "data": {
+        "code": "72137",
+        "name": "Toa Baja"
+      }
+    },
+    {
+      "documentId": "72139",
+      "data": {
+        "code": "72139",
+        "name": "Trujillo Alto"
+      }
+    },
+    {
+      "documentId": "72141",
+      "data": {
+        "code": "72141",
+        "name": "Utuado"
+      }
+    },
+    {
+      "documentId": "72143",
+      "data": {
+        "code": "72143",
+        "name": "Vega Alta"
+      }
+    },
+    {
+      "documentId": "72145",
+      "data": {
+        "code": "72145",
+        "name": "Vega Baja"
+      }
+    },
+    {
+      "documentId": "72147",
+      "data": {
+        "code": "72147",
+        "name": "Vieques"
+      }
+    },
+    {
+      "documentId": "72149",
+      "data": {
+        "code": "72149",
+        "name": "Villalba"
+      }
+    },
+    {
+      "documentId": "72151",
+      "data": {
+        "code": "72151",
+        "name": "Yabucoa"
+      }
+    },
+    {
+      "documentId": "72153",
+      "data": {
+        "code": "72153",
+        "name": "Yauco"
+      }
+    }
+  ]
+}

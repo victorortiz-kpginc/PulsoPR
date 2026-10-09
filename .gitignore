@@ -1,0 +1,8 @@
+# Local environment files, at any directory depth
+.env
+.env.*
+!.env.example
+
+# Local configuration overlays; never load these into browser bundles if secret
+appsettings.Local.json
+appwrite.local.json

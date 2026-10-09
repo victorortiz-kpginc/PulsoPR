@@ -1,0 +1,111 @@
+{
+  "seedVersion": 1,
+  "synthetic": true,
+  "projectId": "6ac82de0000ae8ab05a2",
+  "environment": "dev",
+  "observedAt": "2026-10-09T12:12:34.943Z",
+  "team": {
+    "id": "hackathon-demo-team",
+    "name": "Equipo ficticio del hackathon"
+  },
+  "documents": [
+    {
+      "collectionId": "facilities",
+      "documentId": "hackathon-demo-pharmacy",
+      "data": {
+        "name": "Farmacia Demo Pulso PR — FICTICIA",
+        "municipalityId": "72001",
+        "address": "Dirección ficticia: demo de hackathon",
+        "hours": "Demo: 8:00–18:00",
+        "teamId": "hackathon-demo-team"
+      },
+      "permissions": []
+    },
+    {
+      "collectionId": "facility_services",
+      "documentId": "hackathon-demo-service",
+      "data": {
+        "facilityId": "hackathon-demo-pharmacy",
+        "serviceId": "pharmacy",
+        "availability": "available",
+        "note": "Servicio ficticio de demostración"
+      },
+      "permissions": []
+    },
+    {
+      "collectionId": "facility_operational_status",
+      "documentId": "hackathon-demo-pharmacy",
+      "data": {
+        "facilityId": "hackathon-demo-pharmacy",
+        "operationalState": "operational",
+        "electricityState": "available",
+        "generatorState": "available",
+        "note": "Estado sintético — hackathon"
+      },
+      "permissions": []
+    },
+    {
+      "collectionId": "facility_status_history",
+      "documentId": "hackathon-demo-history",
+      "data": {
+        "facilityId": "hackathon-demo-pharmacy",
+        "operationalState": "operational",
+        "electricityState": "available",
+        "generatorState": "available",
+        "source": "FacilityConfirmed",
+        "reportedAt": "2026-10-09T12:07:29.115Z",
+        "note": "Historial sintético — hackathon"
+      },
+      "permissions": []
+    },
+    {
+      "collectionId": "resource_availability",
+      "documentId": "hackathon-demo-resource",
+      "data": {
+        "facilityId": "hackathon-demo-pharmacy",
+        "resourceType": "demo-medicines",
+        "availability": "limited",
+        "note": "Recurso ficticio; no inventario real"
+      },
+      "permissions": []
+    },
+    {
+      "collectionId": "facility_confirmations",
+      "documentId": "hackathon-demo-pharmacy",
+      "data": {
+        "facilityId": "hackathon-demo-pharmacy",
+        "source": "FacilityConfirmed",
+        "confirmedAt": "2026-10-09T12:07:29.115Z",
+        "validUntil": "2026-10-10T12:07:29.115Z",
+        "note": "Confirmación sintética — hackathon"
+      },
+      "permissions": []
+    },
+    {
+      "collectionId": "assistance_requests",
+      "documentId": "hackathon-demo-request",
+      "data": {
+        "citizenId": "demo-citizen",
+        "facilityId": "hackathon-demo-pharmacy",
+        "serviceId": "pharmacy",
+        "municipalityId": "72001",
+        "description": "Solicitud ficticia para la presentación del hackathon",
+        "status": "submitted"
+      },
+      "permissions": []
+    },
+    {
+      "collectionId": "assistance_request_events",
+      "documentId": "hackathon-demo-event",
+      "data": {
+        "requestId": "hackathon-demo-request",
+        "eventType": "submitted",
+        "actorId": "demo-citizen",
+        "occurredAt": "2026-10-09T12:07:29.115Z",
+        "responseNote": "Evento inicial sintético"
+      },
+      "permissions": []
+    }
+  ],
+  "resetPolicy": "Delete/reset only these explicit synthetic IDs if requested. Preserve other client data; do not purge collections. Refresh confirmation timestamps for a later presentation."
+}
