@@ -98,7 +98,6 @@ else
 </MudForm>
 <MudButton Href="/recuperacion" Variant="Variant.Text" Class="access-recovery">¿Olvidaste tu contraseña?</MudButton>
 @if (!string.IsNullOrEmpty(accessError)) { <MudAlert Severity="Severity.Error" Dense="true" Class="mt-2">@accessError
-@if (sessionNeedsSignOut) { <MudButton OnClick="ClearActiveSessionAsync" Disabled="@authBusy">Cerrar sesión actual</MudButton> }
 </MudAlert> }
 <MudDivider />
 <p class="small">El acceso depende de la cuenta asignada. Para ayuda con tu cuenta, comunícate con el equipo de Pulso PR.</p>
@@ -533,7 +532,6 @@ else
     private MudForm? accessForm;
     private MudForm? recoveryForm;
     private string accessError="";
-    private bool sessionNeedsSignOut;
     private bool recoveryNotice;
     private bool authBusy;
     private string loginEmail="", loginPassword="", recoveryEmail="", recoveryPassword="", recoveryError="";
@@ -580,7 +578,7 @@ else
     {
         if (authBusy) return;
         if (accessForm is null) return; await accessForm.ValidateAsync(); if (!accessForm.IsValid) return;
-        authBusy=true; accessError=""; sessionNeedsSignOut=false;
+        authBusy=true; accessError="";
         try
         {
             var session=await Api.SignInAsync(loginEmail.Trim(),loginPassword); Auth.Set(session); Store.Role=session.Role!;
@@ -591,30 +589,24 @@ else
         {
             if (error.Message.Contains("DIFFERENT_ACCOUNT_SESSION_ACTIVE"))
             {
-                accessError="Ya hay otra cuenta conectada en este navegador. Cierra su sesión antes de cambiar de cuenta.";
-                sessionNeedsSignOut=true;
+                accessError="Ya hay otra cuenta conectada en este perfil del navegador. Para usar ambas cuentas a la vez, abre otro perfil o navegador.";
             }
             else if (error.Message.Contains("ACCOUNT_WITHOUT_UNIQUE_PORTAL_ROLE"))
             {
                 accessError="Tu cuenta no tiene una asignación única de proveedor o administración. Comunícate con el equipo de Pulso PR.";
-                sessionNeedsSignOut=true;
             }
             else if (error.Message.Contains("SESSION_RECHECK_FAILED"))
             {
                 accessError="No pudimos recuperar la sesión activa. Recarga la página y vuelve a intentar.";
             }
+            else if (error.Message.Contains("TAB_SESSION_UNAVAILABLE"))
+            {
+                accessError="Appwrite no devolvió una sesión para esta pestaña. Revisa la conexión y vuelve a intentar.";
+            }
             else { accessError="No fue posible validar la cuenta. Revisa el correo y la contraseña."; }
         }
         catch { accessError="No fue posible iniciar sesión. Vuelve a intentar."; }
         finally { authBusy=false; loginPassword=""; }
-    }
-    private async Task ClearActiveSessionAsync()
-    {
-        if (authBusy) return;
-        authBusy=true;
-        try { await Api.SignOutAsync(); Auth.Clear(); sessionNeedsSignOut=false; accessError=""; loginPassword=""; }
-        catch { accessError="No pudimos cerrar la sesión. Recarga la página y vuelve a intentar."; }
-        finally { authBusy=false; }
     }
     private async Task RecoveryAsync()
     {

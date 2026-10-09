@@ -1,5 +1,5 @@
 // Reuse authenticated identity, never treat an existing session as password validation.
-export async function signInWithSession({ account, currentSession }, email, password) {
+export async function signInWithSession({ account, currentSession, isolateAccount }, email, password) {
   const matches = session => session.email?.toLowerCase() === email.trim().toLowerCase();
   const accept = session => {
     if (!session) throw new Error('SESSION_RECHECK_FAILED');
@@ -8,7 +8,12 @@ export async function signInWithSession({ account, currentSession }, email, pass
     return session;
   };
   const existing = await currentSession();
-  if (existing) return accept(existing);
+  if (existing) {
+    if (!matches(existing) && isolateAccount) {
+      return isolateAccount(() => signInWithSession({ account, currentSession }, email, password));
+    }
+    return accept(existing);
+  }
   try {
     await account.createEmailPasswordSession({ email: email.trim(), password });
   } catch (error) {

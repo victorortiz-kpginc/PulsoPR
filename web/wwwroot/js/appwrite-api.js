@@ -1,12 +1,14 @@
-import { Client, Databases, Account, Teams, ID, Query } from './appwrite-sdk.js';
+import { Databases, Account, Teams, ID, Query } from './appwrite-sdk.js';
 import { createMvpApi, resolvePortalRole } from './appwrite-api-core.js';
 import { signInWithSession } from './auth-session-core.js';
+import { TabSessionClient } from './tab-session-client.js';
 
 let api;
 let account;
 let teams;
+let client;
 export function initialize(config) {
-  const client = new Client().setEndpoint(config.endpoint).setProject(config.projectId);
+  client = new TabSessionClient(config);
   account = new Account(client);
   teams = new Teams(client);
   api = createMvpApi({ database: new Databases(client), ID, Query, config });
@@ -39,7 +41,7 @@ export async function currentSession() {
   } catch { return null; }
 }
 export async function signIn(email, password) {
-  return signInWithSession({ account, currentSession }, email, password);
+  return signInWithSession({ account, currentSession, isolateAccount:operation => client.withFreshSession(operation) }, email, password);
 }
 export async function signOut() { await account.deleteSession({ sessionId: 'current' }); }
 export async function requestRecovery(email, url) { return account.createRecovery({ email, url }); }

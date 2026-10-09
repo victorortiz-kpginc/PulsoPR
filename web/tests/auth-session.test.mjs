@@ -52,3 +52,19 @@ test('unassigned new login is rejected and its session cleaned up', async () => 
   await assert.rejects(api.signIn(), /ACCOUNT_WITHOUT_UNIQUE_PORTAL_ROLE/);
   assert.deepEqual(api.calls(), { creates:1, deletes:1 });
 });
+
+test('isolated account switch creates a session without deleting the old one', async () => {
+  let active = session, creates = 0, deletes = 0;
+  const next = { ...session, email:'other@example.test', id:'synthetic-other' };
+  const deps = {
+    currentSession: async () => active,
+    account: {
+      createEmailPasswordSession: async () => { creates++; active = next; },
+      deleteSession: async () => { deletes++; }
+    },
+    isolateAccount: async operation => { active=null; return operation(); }
+  };
+  assert.deepEqual(await signInWithSession(deps, next.email, 'synthetic-password'), next);
+  assert.equal(creates, 1);
+  assert.equal(deletes, 0);
+});

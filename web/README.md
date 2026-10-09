@@ -4,6 +4,10 @@ Portal web MVP standalone Blazor WebAssembly .NET 10, MudBlazor 9.11.0, Appwrite
 
 ## Cuentas de acceso de desarrollo
 
+Web now isolates Appwrite sessions per tab with `sessionStorage` and the documented `X-Fallback-Cookies` transport, omitting shared browser cookies and the app's `cookieFallback` localStorage. Open separate new tabs to sign into different accounts simultaneously in one browser profile. Reload preserves each tab's account; normal logout ends only that session. Existing app sessions remain unchanged. Browser duplication may copy sessionStorage, so use a fresh tab for another account. Closing a tab removes local persistence; server sessions expire according to Appwrite's policies. No server session-limit setting was changed.
+
+`node scripts/auth-session-smoke.cjs` tests isolation in one browser context using mocked API responses. `WEB_LIVE_AUTH_SMOKE=1 node scripts/auth-session-live-smoke.cjs` opts into real login/logout for the documented fictitious dev accounts and cleans up only its own sessions. Both default to the preview at `http://localhost:5185`; override `WEB_BASE_URL` when needed. No credentials or session values are printed by these tests.
+
 Estas cuentas ficticias están creadas en el proyecto PulsoPR dev. Son únicamente para el MVP; no reutilizar sus contraseñas ni trasladarlas a producción.
 
 | Espacio | Correo | Contraseña | Acceso asignado |
