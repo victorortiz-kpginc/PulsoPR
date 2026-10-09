@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { confirmationLabel } from '../src/domain/contracts.ts';
+const now = Date.parse('2026-10-09T12:00:00Z');
+const value = {source:'FacilityConfirmed',confirmedAt:'2026-10-08T12:00:00Z',validUntil:'2026-10-09T12:00:00Z'};
+assert.equal(confirmationLabel(value,now),'Sin confirmación reciente');
+assert.equal(confirmationLabel({...value,confirmedAt:'2026-10-09T13:00:00Z'},now),'Fecha de confirmación inválida');
+assert.equal(confirmationLabel({...value,source:'CommunityReported'},now),'Reporte comunitario · no verificado');
+assert.equal(confirmationLabel(undefined,now),'Sin información de confirmación');
+assert.equal(confirmationLabel({...value,confirmedAt:'2026-10-09T11:00:00Z',validUntil:'2026-10-10T11:00:00Z'},now),'Confirmado por el proveedor');
+console.log('PASS: 5 confirmation boundaries (24h, future, community, missing, recent)');
