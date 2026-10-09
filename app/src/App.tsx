@@ -32,7 +32,7 @@ function useAppDemo() {
 }
 
 function Shell({ children, title = 'Pulso PR', back = false }: { children: React.ReactNode; title?: string; back?: boolean }) {
-  return <IonPage><header className="topbar"><div className="topbar-inner">{back && <button className="back" onClick={() => history.back()} aria-label="Volver">←</button>}<Link to="/" className="brand"><span className="brand-mark">p</span><span>{title}</span></Link><Link to="/ayuda" className="help-link">Ayuda</Link></div></header><IonContent fullscreen><main className="page-content">{children}</main><footer className="footer"><span>Información comunitaria</span><Link to="/ayuda">Emergencias y contacto</Link></footer></IonContent></IonPage>;
+  return <IonPage><header className="topbar"><div className="topbar-inner">{back && <button className="back" onClick={() => history.back()} aria-label="Volver">←</button>}<Link to="/" className="brand" aria-label={`${title} · Pulso PR`}><picture><source media="(max-width: 480px)" srcSet="/brand/pulsopr-icon.svg" /><img className="brand-mark" src="/brand/pulsopr-logo-horizontal.svg" alt="PulsoPR" /></picture><span className="brand-context">{title}</span></Link><Link to="/ayuda" className="help-link">Ayuda</Link></div></header><IonContent fullscreen><main className="page-content">{children}</main><footer className="footer"><span>Información comunitaria</span><Link to="/ayuda">Emergencias y contacto</Link></footer></IonContent></IonPage>;
 }
 
 function AppRoutes() {
