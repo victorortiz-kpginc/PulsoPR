@@ -25,7 +25,7 @@ function previewFacility(row: Row): PreviewProvider {
   return {
     facility: { ...facility, providerType: kind }, kind,
     service: 'Medicamentos',
-    summary: 'Información sintética publicada para la demostración comunitaria.',
+    summary: 'Apoyo comunitario e información de servicios.',
     initials, color: colors[kind], operational: 'Sin información operativa',
     resources: 'Sin información reciente', electricity: 'Sin información', generator: 'Sin información',
   };
