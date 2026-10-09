@@ -6,7 +6,7 @@ import { municipalityOptions } from './preview/municipalities';
 import { statusText, type AssistanceRequest, type RequestEvent } from './domain/contracts';
 import { getCitizenRequest, getProvider, listCitizenRequests, listMunicipalityOptions, listProviders, municipalityCode, municipalityName, newOperationId, submitCitizenRequest } from './data/hackathonApi';
 import { GeographicMap } from './components/GeographicMap';
-import { completeRecovery, currentAccount, sendRecovery, signIn, signOut, type CitizenAccount } from './data/auth';
+import { completeRecovery, currentAccount, registerCitizen, sendRecovery, signIn, signOut, type CitizenAccount } from './data/auth';
 
 const kinds: (ProviderKind | 'all')[] = ['all', 'person', 'organization', 'community_center'];
 const kindLabel = (kind: string) => kind === 'all' ? 'Todos' : kindText[kind as ProviderKind];
@@ -16,6 +16,7 @@ interface AppDemoState {
   user: CitizenAccount | null;
   authLoading: boolean;
   authenticate: (email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   providerRows: PreviewProvider[];
   setProviderRows: (rows: PreviewProvider[]) => void;
@@ -81,6 +82,11 @@ function AppRoutes() {
     const destination = new URLSearchParams(window.location.search).get('returnTo') ?? '/';
     navigate(destination === '/solicitudes' || /^\/(solicitud|seguimiento)\/[A-Za-z0-9._-]+$/.test(destination) ? destination : '/', { replace: true });
   };
+  const register = async (name: string, email: string, password: string) => {
+    ++sessionVersion.current;
+    const account = await registerCitizen(name, email, password);
+    setUser(account); setAuthLoading(false);
+  };
   const logout = async () => {
     ++sessionVersion.current; setUser(null); setAuthLoading(false); clearPrivateState(); navigate('/');
     try { await signOut(); } catch { setToast('No se pudo cerrar la sesión en el servidor. Vuelve a iniciar sesión y reintenta el cierre.'); }
@@ -142,7 +148,7 @@ function AppRoutes() {
     setRequestRows(current => [request, ...current.filter(row => row.$id !== request.$id)]);
     return request.$id;
   };
-  const data: AppDemoState = { user, authLoading, authenticate, logout, providerRows, setProviderRows, municipalityRows, requestRows, activeRequest, requestEvents, localStateIds, dataSource, setDataSource, submitRequest, refreshRequest, refreshRequests };
+  const data: AppDemoState = { user, authLoading, authenticate, register, logout, providerRows, setProviderRows, municipalityRows, requestRows, activeRequest, requestEvents, localStateIds, dataSource, setDataSource, submitRequest, refreshRequest, refreshRequests };
   return <AppDemoContext.Provider value={data}><><Routes>
     <Route path="/" element={<Home />} />
     <Route path="/resultados" element={<Results />} />
@@ -155,7 +161,7 @@ function AppRoutes() {
     </Route>
     <Route path="/recuperacion" element={<AccountPage />} />
     <Route path="/acceso" element={<Access />} />
-    <Route path="/registro" element={<Navigate to="/acceso" replace />} />
+    <Route path="/registro" element={<Register />} />
     <Route path="/verificacion" element={<Navigate to="/acceso" replace />} />
     <Route path="/ayuda" element={<Help />} />
     <Route path="*" element={<NotFound />} />
@@ -178,7 +184,7 @@ function Home() {
   return <Shell><section className="hero"><div className="hero-copy"><div className="eyebrow"><span className="live-dot" /> APOYO COMUNITARIO EN PUERTO RICO</div><h1>La ayuda empieza<br />con <em>estar conectados.</em></h1><p>Encuentra personas y organizaciones que comparten recursos y apoyo en tu comunidad.</p><Link className="button button-primary map-hero-link" to="/mapa">Explorar mapa comunitario <span>→</span></Link></div><div className="hero-art" aria-hidden="true"><span className="sun"/><span className="hill hill-one"/><span className="hill hill-two"/><span className="art-home">⌂</span><span className="art-heart">♥</span></div></section><section className="search-panel"><div className="search-heading"><span className="search-icon">⌕</span><div><h2>¿Qué necesitas hoy?</h2><p>Busca apoyo por municipio y servicio.</p></div></div><div className="search-fields"><label className="field-label">Municipio<IonSelect value={municipality} onIonChange={e => setMunicipality(e.detail.value)} interface="popover" aria-label="Municipio">{municipalityRows.map(m => <IonSelectOption key={m.code} value={m.name}>{m.name}</IonSelectOption>)}</IonSelect></label><label className="field-label">Tipo de ayuda<IonSelect value={need} onIonChange={e => setNeed(e.detail.value)} interface="popover" aria-label="Tipo de ayuda">{['Medicamentos', 'Alimentos', 'Artículos esenciales'].map(m => <IonSelectOption key={m} value={m}>{m}</IonSelectOption>)}</IonSelect></label><Link className="button button-primary search-submit" to={`/resultados?municipio=${encodeURIComponent(municipality)}&municipioId=${municipalityId}&servicio=${encodeURIComponent(need)}`}>Buscar apoyo <span>→</span></Link></div><div className="notice"><span>ⓘ</span> Pulso PR conecta comunidades. No es un servicio de emergencias ni garantiza disponibilidad.</div></section><section className="home-bottom"><div><span className="eyebrow">UNA RED, MUCHAS MANOS</span><h2>El apoyo puede venir<br />de distintos lugares.</h2><p>Personas, organizaciones y centros comunitarios participan del mismo flujo de ayuda.</p><Link className="text-link" to="/resultados">Explorar proveedores <span>→</span></Link></div><div className="type-grid">{(['person', 'organization', 'community_center'] as ProviderKind[]).map((kind, index) => <Link to={`/resultados?tipo=${kind}`} className={`type-card type-${index}`} key={kind}><span className="type-symbol">{['♡', '✳', '⌂'][index]}</span><span><strong>{kindLabel(kind)}</strong><small>Ver opciones de apoyo</small></span><span className="arrow">↗</span></Link>)}</div></section><QuickLinks /></Shell>;
 }
 
-function QuickLinks() { return <nav className="quick-links" aria-label="Acceso rápido"><Link to="/acceso">Entrar a mi cuenta</Link><Link to="/solicitudes">Mis solicitudes</Link></nav>; }
+function QuickLinks() { return <nav className="quick-links" aria-label="Acceso rápido"><Link to="/acceso">Entrar a mi cuenta</Link><Link to="/registro">Crear cuenta ciudadana</Link><Link to="/solicitudes">Mis solicitudes</Link></nav>; }
 
 function Results() {
   const { providerRows, setProviderRows, dataSource, setDataSource } = useAppDemo();
@@ -243,7 +249,16 @@ function Access() {
   const { authenticate, user, logout } = useAppDemo();
   const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
   const submit = async () => { setBusy(true); setError(''); try { await authenticate(email.trim(), password); } catch { setError('No pudimos iniciar sesión. Verifica tus credenciales y que la cuenta sea ciudadana.'); } finally { setBusy(false); } };
-  return <Shell title="Tu cuenta" back><div className="form-wrap"><div className="eyebrow">BIENVENIDO/A DE NUEVO</div><h1 className="page-title">Continúa con tu comunidad.</h1><p className="page-lead">Inicia sesión para enviar y seguir solicitudes.</p><div className="content-card form-card">{user ? <><p>Sesión iniciada como {user.name}.</p><button className="button button-primary full-width" onClick={() => void logout()}>Cerrar sesión</button></> : <><label className="field-label">Correo electrónico<IonInput type="email" value={email} onIonInput={event => setEmail(String(event.detail.value ?? ''))} autocomplete="email" /></label><label className="field-label">Contraseña<IonInput type="password" value={password} onIonInput={event => setPassword(String(event.detail.value ?? ''))} autocomplete="current-password" /></label><button className="button button-primary full-width" disabled={busy || !email || !password} onClick={() => void submit()}>{busy ? 'Conectando…' : 'Iniciar sesión'}</button>{error && <p className="state-banner state-error" role="alert">{error}</p>}<Link to="/recuperacion" className="text-link centered">¿Olvidaste tu contraseña?</Link><p className="centered muted-text">El acceso se habilita para cuentas ciudadanas asignadas.</p></>}</div>{user && <p className="centered"><button className="text-link" onClick={() => void logout()}>Cerrar sesión</button></p>}</div></Shell>;
+  return <Shell title="Tu cuenta" back><div className="form-wrap"><div className="eyebrow">BIENVENIDO/A DE NUEVO</div><h1 className="page-title">Continúa con tu comunidad.</h1><p className="page-lead">Inicia sesión para enviar y seguir solicitudes.</p><div className="content-card form-card">{user ? <><p>Sesión iniciada como {user.name}.</p><button className="button button-primary full-width" onClick={() => void logout()}>Cerrar sesión</button></> : <><label className="field-label">Correo electrónico<IonInput type="email" value={email} onIonInput={event => setEmail(String(event.detail.value ?? ''))} autocomplete="email" /></label><label className="field-label">Contraseña<IonInput type="password" value={password} onIonInput={event => setPassword(String(event.detail.value ?? ''))} autocomplete="current-password" /></label><button className="button button-primary full-width" disabled={busy || !email || !password} onClick={() => void submit()}>{busy ? 'Conectando…' : 'Iniciar sesión'}</button>{error && <p className="state-banner state-error" role="alert">{error}</p>}<Link to="/recuperacion" className="text-link centered">¿Olvidaste tu contraseña?</Link><div className="form-divider"><span>¿Aún no tienes cuenta?</span></div><Link to="/registro" className="button button-outline full-width centered">Crear cuenta ciudadana</Link></>}</div>{user && <p className="centered"><button className="text-link" onClick={() => void logout()}>Cerrar sesión</button></p>}</div></Shell>;
+}
+
+function Register() {
+  const { register, user, logout } = useAppDemo();
+  const [name, setName] = useState(''); const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [confirm, setConfirm] = useState(''); const [accepted, setAccepted] = useState(false); const [done, setDone] = useState(false); const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const valid = name.trim().length > 1 && email.includes('@') && password.length >= 8 && password === confirm && accepted;
+  if (user && !done) return <Shell title="Crear cuenta" back><div className="form-wrap"><div className="eyebrow">CUENTA CIUDADANA</div><h1 className="page-title">Ya tienes una sesión.</h1><p className="page-lead">Cierra la sesión actual antes de registrar otra cuenta.</p><div className="content-card form-card"><button className="button button-outline full-width" onClick={() => void logout()}>Cerrar sesión</button><Link to="/" className="text-link centered">Volver al inicio</Link></div></div></Shell>;
+  return <Shell title="Crear cuenta" back><div className="form-wrap"><div className="eyebrow">CUENTA CIUDADANA</div><h1 className="page-title">Crea tu cuenta.</h1><p className="page-lead">Regístrate para enviar solicitudes no urgentes y consultar sus respuestas.</p><div className="content-card form-card">{done ? <><div className="state-banner" role="status">Tu cuenta está lista. Iniciaste sesión como {email.trim()}.</div><Link to="/" className="button button-primary full-width centered">Explorar apoyo</Link></> : <><label className="field-label">Nombre y apellido<IonInput value={name} onIonInput={e => setName(String(e.detail.value ?? ''))} autocomplete="name" /></label><label className="field-label">Correo electrónico<IonInput type="email" value={email} onIonInput={e => setEmail(String(e.detail.value ?? ''))} autocomplete="email" /></label><label className="field-label">Contraseña<IonInput type="password" value={password} onIonInput={e => setPassword(String(e.detail.value ?? ''))} autocomplete="new-password" /></label><label className="field-label">Confirmar contraseña<IonInput type="password" value={confirm} onIonInput={e => setConfirm(String(e.detail.value ?? ''))} autocomplete="new-password" /></label>{password && password.length < 8 && <p className="muted-text">Usa al menos 8 caracteres.</p>}{confirm && password !== confirm && <p className="state-banner state-error" role="alert">Las contraseñas no coinciden.</p>}<label className="consent-line"><input type="checkbox" checked={accepted} onChange={e => setAccepted(e.target.checked)} /> Acepto usar Pulso PR para solicitudes comunitarias no urgentes.</label>{error && <p role="alert" className="state-banner state-error">{error}</p>}<button className="button button-primary full-width" disabled={!valid || busy} onClick={async () => { setError(''); setBusy(true); try { await register(name.trim(), email.trim(), password); setDone(true); } catch (failure) { setError(failure instanceof Error && failure.message === 'ACCOUNT_CREATED_SESSION_FAILED' ? 'La cuenta se creó, pero no se pudo iniciar sesión. Vuelve al acceso e inténtalo.' : 'No se pudo crear la cuenta. Verifica los datos o inicia sesión si ya tienes una cuenta.'); } finally { setBusy(false); } }}>{busy ? 'Creando cuenta…' : 'Crear cuenta'}</button></>}</div><Link to="/acceso" className="text-link centered">Ya tengo cuenta · Iniciar sesión</Link></div></Shell>;
 }
 
 function AccountPage() {

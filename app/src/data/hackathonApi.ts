@@ -18,14 +18,15 @@ function providerType(row: Row): ProviderKind {
   return value === 'person' || value === 'community_center' ? value : 'organization';
 }
 
-function previewFacility(row: Row): PreviewProvider {
+function previewFacility(row: Row, offeredService?: Row): PreviewProvider {
   const facility = row as unknown as Facility;
   const kind = providerType(row);
   const initials = facility.name.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase();
+  const serviceId = offeredService?.serviceId;
   return {
     facility: { ...facility, providerType: kind }, kind,
-    service: 'Medicamentos',
-    summary: 'Apoyo comunitario e información de servicios.',
+    service: typeof serviceId === 'string' ? serviceLabels[serviceId] ?? serviceId : 'Servicios por confirmar',
+    summary: typeof offeredService?.note === 'string' ? offeredService.note : typeof serviceId === 'string' ? 'Apoyo comunitario e información de servicios.' : 'El proveedor aún no ha añadido servicios.',
     initials, color: colors[kind], operational: 'Sin información operativa',
     resources: 'Sin información reciente', electricity: 'Sin información', generator: 'Sin información',
   };
@@ -54,8 +55,9 @@ export async function listProviders(options: { municipalityId?: string; provider
   const queries = [Query.limit(100)];
   if (options.municipalityId) queries.push(Query.equal('municipalityId', options.municipalityId));
   if (options.providerType) queries.push(Query.equal('providerType', options.providerType));
-  const result = await queryRows('facilities', queries);
-  return (result.documents as Row[]).map(previewFacility);
+  const [result, services] = await Promise.all([queryRows('facilities', queries), queryRows('facility_services', [Query.limit(100)])]);
+  const serviceByFacility = new Map((services.documents as Row[]).map(row => [String(row.facilityId), row]));
+  return (result.documents as Row[]).map(row => previewFacility(row, serviceByFacility.get(row.$id)));
 }
 
 export interface GeographicPlace {
@@ -134,16 +136,16 @@ export async function getProvider(facilityId: string): Promise<PreviewProvider> 
     queryRows('facility_services', filter), queryRows('facility_operational_status', filter),
     queryRows('resource_availability', filter), queryRows('facility_confirmations', filter),
   ]);
-  const provider = previewFacility(row);
   const service = (services.documents as Row[])[0];
+  const provider = previewFacility(row, service);
   const status = (statuses.documents as Row[])[0];
   const availability = (resources.documents as Row[])[0];
   const confirmation = asConfirmation((confirmations.documents as Row[])[0]);
   const operationalState = status?.operationalState;
   return {
     ...provider,
-    service: typeof service?.serviceId === 'string' ? serviceLabels[service.serviceId] ?? service.serviceId : provider.service,
-    summary: typeof service?.note === 'string' ? service.note : provider.summary,
+    service: provider.service,
+    summary: provider.summary,
     operational: operationalState === 'operational' ? 'Operativo' : typeof operationalState === 'string' ? operationalState : provider.operational,
     resources: availability ? `${String(availability.resourceType ?? 'Recurso')}: ${String(availability.availability ?? 'sin información')}` : provider.resources,
     electricity: typeof status?.electricityState === 'string' ? status.electricityState : provider.electricity,
