@@ -7,7 +7,7 @@
         <MudButton Size="Size.Small" Variant="@(Current==state.Key ? Variant.Filled : Variant.Text)" Color="Color.Primary" OnClick="()=>Change(state.Key)">@state.Value</MudButton>
     }
     </div>
-    <small>Estados simulados para revisar esta pantalla. No se consulta Appwrite.</small>
+    <small>Estados disponibles para revisar esta pantalla.</small>
 </details>
 @code {
     [Parameter] public string? Current { get; set; }

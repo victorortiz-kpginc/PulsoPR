@@ -1,0 +1,121 @@
+@page "/mapa"
+@implements IAsyncDisposable
+@inject PulsoPR.Web.Models.AppwritePortalApi Api
+@inject IJSRuntime JS
+@inject IConfiguration Configuration
+@inject PulsoPR.Web.Models.PortalAuthState Auth
+<PageTitle>Mapa comunitario · Pulso PR</PageTitle>
+
+<section class="geo-page" aria-labelledby="geo-title">
+    <div class="geo-heading"><div><span class="eyebrow">EXPLORACIÓN TERRITORIAL · PUERTO RICO</span><h1 id="geo-title">Ayuda y contexto cerca de ti</h1><p>Consulta proveedores e información vigente en tu área.</p></div><span class="geo-demo-tag">Mapa comunitario</span></div>
+    <div class="geo-toolbar">
+        <MudSelect T="string" Label="Municipio" Value="MunicipalityId" ValueChanged="MunicipalityChanged" Variant="Variant.Outlined" Margin="Margin.Dense">
+            @foreach (var town in Towns) { <MudSelectItem Value="@town.Code">@town.Name</MudSelectItem> }
+        </MudSelect>
+        <MudSelect T="int" Label="Distancia" Value="RadiusKm" ValueChanged="RadiusChanged" Variant="Variant.Outlined" Margin="Margin.Dense">
+            @foreach (var distance in new[] { 2, 5, 10, 25 }) { <MudSelectItem Value="@distance">@distance km</MudSelectItem> }
+        </MudSelect>
+        <MudSelect T="string" Label="Tipo de proveedor" Value="ProviderType" ValueChanged="ProviderTypeChanged" Variant="Variant.Outlined" Margin="Margin.Dense">
+            <MudSelectItem Value="@("all")">Todos</MudSelectItem><MudSelectItem Value="@("person")">Personas</MudSelectItem><MudSelectItem Value="@("organization")">Organizaciones</MudSelectItem><MudSelectItem Value="@("community_center")">Centros comunitarios</MudSelectItem>
+        </MudSelect>
+        <MudButton Variant="@(UserLocation is null ? Variant.Outlined : Variant.Filled)" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.MyLocation" OnClick="LocateAsync" Disabled="Busy">@(UserLocation is null ? "Usar mi ubicación" : "Actualizar ubicación")</MudButton>
+    </div>
+    @if (!string.IsNullOrWhiteSpace(Message)) { <div class="geo-error" role="alert">@Message</div> }
+    <p class="geo-radius-note">@(UserLocation is not null ? $"El radio de {RadiusKm} km se calcula desde tu ubicación actual." : "Elige “Usar mi ubicación” para calcular distancias por radio; mientras tanto, los resultados se limitan al municipio seleccionado.")</p>
+    <div class="geo-layout">
+        <div class="geo-map-card">
+            <div class="geo-map-topline"><span><strong>@(UserLocation is null ? SelectedTown : "Ubicación actual")</strong> · Puerto Rico</span><span class="geo-live-note"><i></i> @(Busy ? "Actualizando" : "Mapa en vivo")</span></div>
+            <div id="pulsoGeoMap" class="geo-map-canvas geo-leaflet-map" role="application" aria-label="Mapa de OpenStreetMap con proveedores e incidentes"></div>
+            <div class="geo-map-legend"><span><i class="legend-provider"></i> Proveedor</span><span><i class="legend-incident"></i> Incidente</span>@if (UserLocation is not null) { <span><i class="legend-user"></i> Tu ubicación</span> }<span class="geo-osm-credit">© OpenStreetMap contributors</span></div>
+        </div>
+        <aside class="geo-side-panel" aria-label="Capas y resultados del mapa">
+            <section class="geo-side-section"><div class="geo-section-title"><div><span class="eyebrow">CONTEXTO</span><h2>Capas del mapa</h2></div></div>
+                <div class="geo-layer-row"><span><b class="geo-layer-icon weather-icon">☁</b><span><strong>Clima</strong><small>@(string.IsNullOrWhiteSpace(WeatherKey) ? "Requiere una clave de OpenWeather" : "Nubosidad · OpenWeather")</small></span></span><MudSwitch T="bool" Value="WeatherEnabled" ValueChanged="WeatherChanged" Disabled="@string.IsNullOrWhiteSpace(WeatherKey)" Color="Color.Primary" aria-label="Activar capa de clima" /></div>
+                <div class="geo-layer-row"><span><b class="geo-layer-icon traffic-icon">↗</b><span><strong>Tráfico</strong><small>Cobertura de Puerto Rico pendiente de validar</small></span></span><input type="checkbox" disabled aria-label="Capa de tráfico no disponible" /></div>
+            </section>
+            @if (SelectedPlace is not null)
+            {
+                <section class="geo-side-section geo-selected-card"><span class="eyebrow">SELECCIÓN EN EL MAPA</span><h2>@SelectedPlace.Name</h2><span class="geo-kind @SelectedPlace.Kind">@SelectedPlace.Type</span><p>@SelectedPlace.Detail</p><small>@SelectedPlace.Municipality@if (SelectedPlace.DistanceKm is not null) { <text> · A @SelectedPlace.DistanceKm.Value.ToString("0.0") km</text> }</small>
+                    @if (SelectedPlace.Kind == "provider") { <MudButton Href="/catalogo" Color="Color.Primary" Variant="Variant.Text" EndIcon="@Icons.Material.Outlined.ArrowForward">Ver directorio de ayuda</MudButton> }
+                </section>
+            }
+            <section class="geo-side-section"><div class="geo-section-title"><div><span class="eyebrow">CERCA DE @SelectedTown.ToUpperInvariant()</span><h2>Resultados cercanos</h2></div><span class="geo-count">@Places.Count</span></div>
+                @if (Places.Count == 0) { <p class="geo-empty">@(Busy ? "Buscando ubicaciones…" : "No hay ubicaciones registradas en esta área todavía.")</p> }
+                else { <div class="geo-place-list">@foreach (var place in Places) { <button class="geo-place-row @(SelectedPlace?.Id == place.Id ? "active" : "")" @onclick="() => SelectPlace(place)"><span class="geo-place-symbol @place.Kind">@(place.Kind == "incident" ? "!" : "＋")</span><span><strong>@place.Name</strong><small>@place.Type@if (place.DistanceKm is not null) { <text> · @place.DistanceKm.Value.ToString("0.0") km</text> }</small></span><span class="geo-place-arrow">›</span></button> }</div> }
+                <small>@Places.Count(place => place.Kind == "provider") proveedores · @Places.Count(place => place.Kind == "incident") incidentes</small>
+            </section>
+        </aside>
+    </div>
+    <p class="geo-disclaimer">Los marcadores provienen de ubicaciones registradas en Pulso PR. Confirma disponibilidad antes de acudir. Pulso PR no es un servicio de emergencias.</p>
+</section>
+
+@code {
+    private const string MapId = "pulsoGeoMap";
+    private IJSObjectReference? mapModule;
+    private bool Busy;
+    private string? Message;
+    private string MunicipalityId = "72001";
+    private int RadiusKm = 5;
+    private string ProviderType = "all";
+    private bool WeatherEnabled;
+    private string WeatherKey => Configuration["OpenWeather:ApiKey"] ?? "";
+    private (double Latitude, double Longitude)? UserLocation;
+    private List<PulsoPR.Web.Models.GeographicMunicipality> Towns = [];
+    private List<PulsoPR.Web.Models.GeographicPlace> Places = [];
+    private PulsoPR.Web.Models.GeographicPlace? SelectedPlace;
+    private string SelectedTown => Towns.FirstOrDefault(town => town.Code == MunicipalityId)?.Name ?? "Puerto Rico";
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        mapModule ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/geographic-map.js");
+        var center = UserLocation ?? (Places.Count > 0 ? (Places[0].Latitude, Places[0].Longitude) : (18.2208, -66.5901));
+        var mapData = new { places = Places, userLocation = UserLocation is null ? null : new[] { UserLocation.Value.Latitude, UserLocation.Value.Longitude }, radiusKm = RadiusKm, weatherEnabled = WeatherEnabled, weatherKey = WeatherKey };
+        await mapModule.InvokeVoidAsync("renderMap", MapId, mapData, new[] { center.Item1, center.Item2 }, UserLocation is null && Places.Count == 0 ? 8 : 12);
+    }
+
+    private async Task MunicipalityChanged(string value) { MunicipalityId = value; UserLocation = null; await LoadAsync(); }
+    private async Task RadiusChanged(int value) { RadiusKm = value; await LoadAsync(); }
+    private async Task ProviderTypeChanged(string value) { ProviderType = value; await LoadAsync(); }
+    private Task WeatherChanged(bool value) { WeatherEnabled = value; StateHasChanged(); return Task.CompletedTask; }
+    private async Task LoadAsync()
+    {
+        Busy = true; Message = null;
+        try
+        {
+            var result = await Api.LoadGeographicMapAsync(MunicipalityId, RadiusKm, ProviderType, UserLocation?.Latitude, UserLocation?.Longitude, Auth.Session?.Role, Auth.Session?.TeamId);
+            if (result.Municipalities.Count > 0) Towns = result.Municipalities;
+            Places = result.Places;
+            SelectedPlace = Places.FirstOrDefault(place => place.Id == SelectedPlace?.Id) ?? Places.FirstOrDefault();
+        }
+        catch
+        {
+            Places = []; SelectedPlace = null;
+            Message = "No se pudo actualizar la información del mapa. Comprueba la conexión e inténtalo de nuevo.";
+        }
+        finally { Busy = false; }
+    }
+
+    private async Task LocateAsync()
+    {
+        try
+        {
+            Message = null;
+            mapModule ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/geographic-map.js");
+            var position = await mapModule.InvokeAsync<Position>("locateUser");
+            UserLocation = (position.Latitude, position.Longitude);
+            await LoadAsync();
+        }
+        catch { Message = "No se pudo obtener tu ubicación. Revisa los permisos o continúa eligiendo un municipio."; }
+    }
+
+    private void SelectPlace(PulsoPR.Web.Models.GeographicPlace place) { SelectedPlace = place; StateHasChanged(); }
+    public async ValueTask DisposeAsync()
+    {
+        if (mapModule is null) return;
+        try { await mapModule.InvokeVoidAsync("disposeMap", MapId); await mapModule.DisposeAsync(); }
+        catch (JSDisconnectedException) { }
+    }
+    private sealed class Position { public double Latitude { get; set; } public double Longitude { get; set; } }
+}

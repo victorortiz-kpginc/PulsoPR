@@ -1,5 +1,6 @@
 @page "/"
 @page "/acceso"
+@page "/recuperacion"
 @page "/seleccionar"
 @page "/proveedor"
 @page "/proveedor/perfil"
@@ -20,20 +21,23 @@
 @inject NavigationManager Nav
 @inject ISnackbar Snackbar
 @inject AppwritePortalApi Api
+@inject PortalAuthState Auth
 @implements IDisposable
 <PageTitle>@Title · Pulso PR</PageTitle>
 <span class="connection-state" data-demo-state="@(Store.IsLoading ? "loading" : Store.IsConnected ? "connected" : "disconnected")" hidden></span>
-@if (Store.IsLoading)
+@if (!IsAccessPage && Store.IsLoading)
 {
-    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="connection-alert">Conectando con el demo sintético…</MudAlert>
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="connection-alert">Conectando con Appwrite…</MudAlert>
 }
-else if (Store.LoadError is not null)
+else if (!IsAccessPage && Store.LoadError is not null)
 {
     <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="connection-alert">
-        Los datos que ves son una vista local de demostración. No se pudo conectar con Appwrite, y los cambios no se guardan mientras la conexión no esté disponible.
+        No se pudo conectar con Appwrite. Los cambios no se guardarán mientras la conexión no esté disponible.
         <MudButton Size="Size.Small" OnClick="RefreshRemoteData">Intentar de nuevo</MudButton>
     </MudAlert>
 }
+@if (!IsAccessPage)
+{
 <div class="page-heading">
 <div>
 <div class="eyebrow">@Category</div>
@@ -42,6 +46,7 @@ else if (Store.LoadError is not null)
 </div>
 @if (Path.StartsWith("proveedor")) { <MudButton Href="/seleccionar" Variant="Variant.Outlined" StartIcon="@Icons.Material.Outlined.SwapHoriz">@Store.Selected.Name</MudButton> }
 </div>
+}
 @if (Estado is "carga")
 {
     <MudPaper Class="state-panel" Elevation="0">
@@ -58,7 +63,7 @@ else if (Estado is "error" or "sin-acceso" or "sesion" or "vacio")
 <MudIcon Icon="@StateIcon" Size="Size.Large" Color="Color.Primary" />
 <h2>@StateTitle</h2>
 <p>@StateDescription</p>
-<MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="ResetState">@(Estado=="sesion" ? "Volver al acceso demo" : "Volver a intentar")</MudButton>
+<MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="ResetState">@(Estado=="sesion" ? "Cambiar perfil" : "Volver a intentar")</MudButton>
 </MudPaper>
 }
 else
@@ -83,13 +88,49 @@ else
 </div>
         <MudPaper Class="panel access-panel" Elevation="0">
 <div class="eyebrow">BIENVENIDO AL PORTAL</div>
-<h2>Explora la demostración</h2>
-<p class="muted">Selecciona una experiencia para revisar las pantallas. Este acceso es simulado.</p>
-<MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Storefront" OnClick="()=>Enter(false)">Entrar como proveedor demo</MudButton>
-<MudButton FullWidth="true" Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Dashboard" OnClick="()=>Enter(true)">Entrar como administración demo</MudButton>
+<h2>Accede al portal</h2>
+<p class="muted">Inicia sesión con la cuenta que te asignaron. Tu cuenta abrirá el espacio de proveedor o administración que corresponde.</p>
+<MudForm @ref="accessForm" Class="access-form">
+    <MudTextField T="string" Label="Correo electrónico" @bind-Value="loginEmail" InputType="InputType.Email" Required="true" RequiredError="Escribe tu correo electrónico." Variant="Variant.Outlined" Immediate="true" />
+    <MudTextField T="string" Label="Contraseña" @bind-Value="loginPassword" InputType="InputType.Password" Required="true" RequiredError="Escribe tu contraseña." Variant="Variant.Outlined" />
+    <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.LockOpen" OnClick="SignInAsync" Disabled="@authBusy">@(authBusy ? "Conectando…" : "Iniciar sesión")</MudButton>
+</MudForm>
+<MudButton Href="/recuperacion" Variant="Variant.Text" Class="access-recovery">¿Olvidaste tu contraseña?</MudButton>
+@if (accessError) { <MudAlert Severity="Severity.Error" Dense="true" Class="mt-2">No fue posible validar la cuenta. Revisa el correo y la contraseña.</MudAlert> }
 <MudDivider />
-<p class="small">No se usan cuentas ni contraseñas reales. La autenticación se evaluará después de la aprobación visual.</p>
-<MudButton Href="/catalogo" Variant="Variant.Text">Explorar directorio</MudButton>
+<p class="small">El acceso depende de la cuenta asignada. Para ayuda con tu cuenta, comunícate con el equipo de Pulso PR.</p>
+</MudPaper>
+</div>
+    }
+    else if (Path=="recuperacion")
+    {
+        <div class="access-grid">
+<div class="access-story">
+<span class="hero-tag">RECUPERA TU ACCESO</span>
+<h2>Volver a entrar debe ser sencillo.</h2>
+<p>Escribe el correo asociado a tu cuenta y recibirás los pasos para recuperar el acceso.</p>
+<small>Si necesitas ayuda, comunícate con el equipo de Pulso PR.</small>
+</div>
+        <MudPaper Class="panel access-panel" Elevation="0">
+<div class="eyebrow">AYUDA CON TU CUENTA</div>
+<h2>Recuperar acceso</h2>
+<p class="muted">Usaremos el correo de tu cuenta de Pulso PR.</p>
+<MudForm @ref="recoveryForm" Class="access-form">
+    @if (RecoveryUserId is null)
+    {
+        <MudTextField T="string" Label="Correo electrónico" @bind-Value="recoveryEmail" InputType="InputType.Email" Required="true" RequiredError="Escribe tu correo electrónico." Variant="Variant.Outlined" Immediate="true" />
+        <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.MarkEmailRead" OnClick="RecoveryAsync" Disabled="@authBusy">@(authBusy ? "Enviando…" : "Enviar instrucciones")</MudButton>
+    }
+    else
+    {
+        <MudTextField T="string" Label="Nueva contraseña" @bind-Value="recoveryPassword" InputType="InputType.Password" Required="true" RequiredError="Escribe una contraseña nueva." HelperText="Usa entre 8 y 256 caracteres." Variant="Variant.Outlined" />
+        <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Primary" OnClick="RecoveryAsync" Disabled="@(authBusy || recoveryPassword.Length < 8 || recoveryPassword.Length > 256)">Actualizar contraseña</MudButton>
+    }
+</MudForm>
+@if (recoveryNotice) { <MudAlert Severity="Severity.Info" Dense="true" Class="mt-2">Si el correo corresponde a una cuenta, recibirás las instrucciones para continuar.</MudAlert> }
+@if (!string.IsNullOrWhiteSpace(recoveryError)) { <MudAlert Severity="Severity.Error" Dense="true" Class="mt-2">@recoveryError</MudAlert> }
+<MudDivider />
+<MudButton Href="/acceso" Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.ArrowBack">Volver al inicio de sesión</MudButton>
 </MudPaper>
 </div>
     }
@@ -101,10 +142,10 @@ else
 </span>
 <div class="eyebrow">@DemoStore.Label(p.ProviderType)</div>
 <h2>@p.Name</h2>
-<p class="muted">@p.Municipality · Proveedor ficticio</p>
+<p class="muted">@p.Municipality · Información de la comunidad</p>
 <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="()=>SelectProvider(p.Id)">Seleccionar @p.Name</MudButton>
 </MudPaper> }</div>
-        <p class="footnote">Asignaciones simuladas para revisar los tres tipos de proveedor. No representan membresías de acceso.</p>
+        <p class="footnote">El perfil determina las opciones disponibles en el portal.</p>
     }
     else if (Path is "" or "proveedor")
     {
@@ -171,7 +212,7 @@ else
 <MudTextField Immediate="true" Class="full-span" Label="Horario (opcional)" @bind-Value="edited.Hours" Lines="2" MaxLength="500" Variant="Variant.Outlined" />
 </div>
 <div class="form-actions">
-<MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveProvider" Disabled="@(Estado=="conflicto")">Guardar perfil demo</MudButton>
+<MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveProvider" Disabled="@(Estado=="conflicto")">Guardar perfil</MudButton>
 <MudButton OnClick="CancelEdit">Descartar cambios</MudButton>
 </div>
 </MudForm>
@@ -181,7 +222,7 @@ else
 <h2>Un perfil que orienta</h2>
 <p>Personas, organizaciones y centros comunitarios comparten este portal.</p>
 <p>La dirección y el horario son opcionales. Publica sólo información de contacto adecuada para compartir.</p>
-<div class="note-box">Este perfil se comparte con el demo sintético. Publica sólo información apropiada para compartir.</div>
+<div class="note-box">Este perfil se comparte con la comunidad. Publica sólo información apropiada para compartir.</div>
 </MudPaper>
 </div>
     }
@@ -200,9 +241,9 @@ else
 <MudTextField Immediate="true" Label="Inicio de interrupción (opcional)" @bind-Value="edited.InterruptionStart" InputType="InputType.DateTimeLocal" Variant="Variant.Outlined" />
 <MudTextField Immediate="true" Label="Fin estimado (opcional)" @bind-Value="edited.InterruptionEnd" InputType="InputType.DateTimeLocal" Variant="Variant.Outlined" />
 </div>
-<MudCheckBox T="bool" @bind-Value="confirmOperation" Label="Confirmo que revisé esta información (demo)." />
+<MudCheckBox T="bool" @bind-Value="confirmOperation" Label="Confirmo que revisé esta información." />
 <div class="form-actions">
-<MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="ConfirmOperation" Disabled="@(!confirmOperation || Estado=="conflicto")">Publicar confirmación demo</MudButton>
+<MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="ConfirmOperation" Disabled="@(!confirmOperation || Estado=="conflicto")">Publicar confirmación</MudButton>
 <MudButton OnClick="CancelEdit">Descartar cambios</MudButton>
 </div>
 </MudForm>
@@ -213,7 +254,7 @@ else
 <h3>@DemoStore.Confirmation(Store.Selected)</h3>
 <p>@(Store.Selected.ConfirmedAt is null ? "Sin fecha reportada" : DemoStore.LocalTime(Store.Selected.ConfirmedAt.Value))</p>
 <p>Una confirmación dura 24 horas. Después se presenta como vencida, sin garantizar disponibilidad.</p>
-<div class="note-box">La fuente y fecha del prototipo son reportadas; no acreditan verificación externa.</div>
+<div class="note-box">La fuente y la fecha indican quién reportó la información y cuándo.</div>
 </MudPaper>
 </div>
     }
@@ -232,7 +273,7 @@ else
 <MudSelect T="string" Label="Disponibilidad" Value="@(Path.EndsWith("servicios") ? edited.ServiceAvailability : edited.ResourceAvailability)" ValueChanged="SetAvailability" Variant="Variant.Outlined">@foreach(var s in availabilityStates) { <MudSelectItem Value="@s">@DemoStore.Label(s)</MudSelectItem> }</MudSelect>
 <MudTextField Immediate="true" T="string" Label="Nota de disponibilidad" Value="@(Path.EndsWith("servicios") ? edited.ServiceNote : edited.ResourceNote)" ValueChanged="SetAvailabilityNote" Lines="3" MaxLength="500" Variant="Variant.Outlined" />
 <div class="form-actions">
-<MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveProvider" Disabled="@(Estado=="conflicto")">Guardar disponibilidad demo</MudButton>
+<MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveProvider" Disabled="@(Estado=="conflicto")">Guardar disponibilidad</MudButton>
 <MudButton OnClick="CancelEdit">Descartar cambios</MudButton>
 </div>
 </MudForm>
@@ -254,11 +295,11 @@ else
 </div>
 <RequestTable Requests="@FilteredRequests" Admin="@IsAdmin" />
 </MudPaper>
-<p class="footnote">Pendientes = enviadas y recibidas. Enviar una solicitud no confirma atención. Datos sintéticos, sin información clínica.</p>
+<p class="footnote">Pendientes = enviadas y recibidas. Enviar una solicitud no confirma atención. No incluyas información clínica.</p>
     }
     else if (Path.Contains("/solicitudes/"))
     {
-        @if (CurrentRequest is not { } request) { <MudAlert Severity="Severity.Warning">Solicitud no encontrada en esta experiencia demo.</MudAlert>
+        @if (CurrentRequest is not { } request) { <MudAlert Severity="Severity.Warning">No se encontró la solicitud.</MudAlert>
 <MudButton Href="@(IsAdmin ? "/admin/pendientes" : "/proveedor/solicitudes")">Volver a solicitudes</MudButton> }
         else
         {
@@ -268,7 +309,7 @@ else
 <h2>@request.Id</h2>
 <StatusPill Value="@request.Status" />
 </div>
-<div class="eyebrow">SOLICITUD NO URGENTE · FICTICIA</div>
+<div class="eyebrow">SOLICITUD DE APOYO · NO URGENTE</div>
 <p class="request-body">@request.Description</p>
 <dl class="detail-list">
 <dt>Proveedor</dt>
@@ -283,12 +324,12 @@ else
                 <MudDivider />
 <h3>Responder a la solicitud</h3>
 <MudForm @key="Path" @ref="form" ValidationDelay="0">
-<MudTextField Immediate="true" Label="Mensaje al solicitante" @bind-Value="response" Lines="3" MaxLength="500" Required="true" RequiredError="Escribe una respuesta breve para continuar." Variant="Variant.Outlined" HelperText="Es una respuesta ficticia del demo; no se envía a una persona real." />
+<MudTextField Immediate="true" Label="Mensaje al solicitante" @bind-Value="response" Lines="3" MaxLength="500" Required="true" RequiredError="Escribe una respuesta breve para continuar." Variant="Variant.Outlined" HelperText="La respuesta aparecerá en el seguimiento de la solicitud." />
 <div class="form-actions">@if(request.Status=="submitted") { <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(Estado=="conflicto")" OnClick='()=>Respond("acknowledged")'>Marcar como recibida</MudButton> } else if(request.Status=="acknowledged") { <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(Estado=="conflicto")" OnClick='()=>Respond("confirmed")'>Confirmar coordinación</MudButton>
 <MudButton Color="Color.Error" Variant="Variant.Outlined" Disabled="@(Estado=="conflicto")" OnClick='()=>Respond("declined")'>No podemos atender</MudButton> } else if(request.Status=="confirmed") { <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(Estado=="conflicto")" OnClick='()=>Respond("completed")'>Completar coordinación</MudButton> }</div>
 </MudForm>
             }
-            else { <MudAlert Severity="Severity.Info" Class="mt-4">@(IsAdmin ? "Vista administrativa de consulta. Las respuestas las gestiona el proveedor." : "Esta solicitud está cerrada. No admite más cambios en la demo.")</MudAlert> }
+            else { <MudAlert Severity="Severity.Info" Class="mt-4">@(IsAdmin ? "Vista administrativa de consulta. Las respuestas las gestiona el proveedor." : "Esta solicitud está cerrada y no admite más cambios.")</MudAlert> }
             </MudPaper>
 <MudPaper Class="panel" Elevation="0">
 <h2>Seguimiento</h2>
@@ -296,13 +337,13 @@ else
 <li>
 <strong>Enviada</strong>
 <small>@DemoStore.LocalTime(request.CreatedAt)</small>
-<p>Solicitud creada en el demo sintético.</p>
+<p>Solicitud registrada en Pulso PR.</p>
 </li>@foreach(var e in request.Events) { <li>
 <strong>@DemoStore.Label(e.State)</strong>
 <small>@DemoStore.LocalTime(e.Time)</small>
 <p>@e.Note</p>
 </li> }</ol>
-<p class="footnote">Historial sintético para la demostración; no acredita entrega ni autoría.</p>
+<p class="footnote">El historial muestra los eventos registrados para esta solicitud.</p>
 </MudPaper>
 </div>
         }
@@ -310,12 +351,12 @@ else
     else if (Path=="proveedor/historia")
     {
         <MudPaper Class="panel" Elevation="0">
-<h2>Actividad reciente</h2>@if(!Store.History.Any(h=>h.FacilityId==Store.SelectedId)) { <p class="muted">Todavía no hay actividad para este proveedor de demo.</p> }<ol class="timeline">@foreach(var item in Store.History.Where(h=>h.FacilityId==Store.SelectedId)) { <li>
+<h2>Actividad reciente</h2>@if(!Store.History.Any(h=>h.FacilityId==Store.SelectedId)) { <p class="muted">Todavía no hay actividad para este proveedor.</p> }<ol class="timeline">@foreach(var item in Store.History.Where(h=>h.FacilityId==Store.SelectedId)) { <li>
 <strong>@item.Title</strong>
 <small>@DemoStore.LocalTime(item.Time)</small>
 <p>@item.Note</p>
 </li> }</ol>
-<MudAlert Severity="Severity.Info">Historia sintética de revisión. Las fechas y fuentes reportadas no son una auditoría resistente a cambios.</MudAlert>
+<MudAlert Severity="Severity.Info">La historia refleja la actividad reportada para este proveedor.</MudAlert>
 </MudPaper>
     }
     else if (Path is "catalogo" or "admin/proveedores")
@@ -331,7 +372,7 @@ else
 </MudPaper>
         <div class="section-heading">
 <p>
-<strong>@FilteredProviders.Count()</strong> proveedores en esta demostración</p>
+<strong>@FilteredProviders.Count()</strong> proveedores encontrados</p>
 <MudButton OnClick="ClearFilters" Size="Size.Small">Limpiar filtros</MudButton>
 </div>
         @if(FilteredProviders.Any()) { <ProviderList Providers="@FilteredProviders" /> } else { <MudPaper Class="state-panel" Elevation="0">
@@ -357,7 +398,7 @@ else
 </div>
 <div class="eyebrow">@DemoStore.Label(provider.ProviderType)</div>
 <h2>@provider.Name</h2>
-<p>@provider.Municipality · Proveedor ficticio</p>
+<p>@provider.Municipality · Información de la comunidad</p>
 <MudDivider />
 <h3>Información para tu visita</h3>
 <dl class="detail-list">
@@ -383,7 +424,7 @@ else
 <MudPaper Class="panel guidance" Elevation="0">
 <h2>@DemoStore.Confirmation(provider)</h2>
 <p>@(provider.ConfirmedAt is null ? "Fecha no disponible" : DemoStore.LocalTime(provider.ConfirmedAt.Value))</p>
-<p>@(provider.Source=="CommunityReported" ? "Reporte comunitario sin verificar." : "Información reportada por el proveedor de demo.")</p>
+<p>@(provider.Source=="CommunityReported" ? "Reporte comunitario sin verificar." : "Información reportada por el proveedor.")</p>
 <div class="note-box">No garantiza atención ni inventario. Coordina antes de visitar. Para emergencias, llama al 911.</div>
 </MudPaper>
 </div>
@@ -395,7 +436,7 @@ else
 <div>
 <span class="hero-tag">UNA MIRADA COMPARTIDA</span>
 <h2>Conectar necesidades.<br />Coordinar posibilidades.</h2>
-<p>Panorama informativo de la red sintética de ayuda.</p>
+<p>Panorama informativo de la red de ayuda.</p>
 </div>
 <MudButton Href="/admin/proveedores" Variant="Variant.Filled" Color="Color.Primary" EndIcon="@Icons.Material.Outlined.ArrowForward">Explorar proveedores</MudButton>
 </div>
@@ -408,7 +449,7 @@ else
 <div class="stat-card">
 <span>Municipios representados</span>
 <strong>@Store.Providers.Select(p=>p.Municipality).Distinct().Count()</strong>
-<small>En los datos sintéticos</small>
+<small>En la información disponible</small>
 </div>
 <div class="stat-card">
 <span>Solicitudes pendientes</span>
@@ -425,7 +466,7 @@ else
 <MudPaper Class="panel" Elevation="0">
 <div class="section-heading">
 <h2>Red por municipio</h2>
-<span class="small muted">Proveedores ficticios</span>
+<span class="small muted">Proveedores</span>
 </div>@foreach(var m in municipalities) { <div class="bar-row">
 <span>@m</span>
 <div class="bar-track">
@@ -461,7 +502,7 @@ else
 </div>
         @if(Path=="admin/indicadores") { <MudPaper Class="panel mt-4" Elevation="0">
 <h2>Lectura responsable de indicadores</h2>
-<p>Conteos calculados a partir de datos sintéticos en memoria. No representan impacto, rendimiento ni demanda real.</p>
+<p>Conteos calculados con la información disponible. No representan impacto, rendimiento ni demanda total.</p>
 <dl class="detail-list">
 <dt>Primera respuesta</dt>
 <dd>No disponible: eventos fiables pendientes</dd>
@@ -482,9 +523,16 @@ else
     [SupplyParameterFromQuery(Name="estado")] public string? Estado { get; set; }
     private string Path => new Uri(Nav.Uri).AbsolutePath.Trim('/');
     private bool IsAdmin => Path.StartsWith("admin");
+    private bool IsAccessPage => Path is "acceso" or "recuperacion";
     private ProviderView edited = new();
     private string lastPath = "";
     private MudForm? form;
+    private MudForm? accessForm;
+    private MudForm? recoveryForm;
+    private bool accessError;
+    private bool recoveryNotice;
+    private bool authBusy;
+    private string loginEmail="", loginPassword="", recoveryEmail="", recoveryPassword="", recoveryError="";
     private string search="", municipalityFilter="todos", typeFilter="todos", requestFilter="todos", response="";
     private bool confirmOperation;
     private readonly string[] types=["person","organization","community_center"], municipalities=["San Juan","Ponce","Mayagüez"], operationStates=["operational","limited","unavailable","unknown"], utilityStates=["available","unavailable","unknown"], availabilityStates=["available","limited","unavailable","unknown"], requestStates=["submitted","acknowledged","confirmed","declined","completed","cancelled"];
@@ -493,18 +541,29 @@ else
     private IEnumerable<RequestView> FilteredRequests => (IsAdmin ? Store.Requests.Where(r=>r.Status is "submitted" or "acknowledged") : ProviderRequests).Where(r=>(requestFilter=="todos" || r.Status==requestFilter) && (r.Id+" "+r.Description).Contains(search,StringComparison.OrdinalIgnoreCase));
     private RequestView? CurrentRequest => (IsAdmin ? Store.Requests : ProviderRequests).FirstOrDefault(r=>r.Id==Id) ?? (Id=="DEMO-001" ? (IsAdmin ? Store.Requests : ProviderRequests).FirstOrDefault() : null);
     private ProviderView? CatalogProvider => Store.Providers.FirstOrDefault(p=>p.Id==Id) ?? (Id=="demo-farmacia" ? Store.Providers.FirstOrDefault(p=>p.Id=="hackathon-demo-pharmacy") : null);
-    private string Title => Path switch { "acceso"=>"Bienvenido a Pulso PR", "seleccionar"=>"Elige tu espacio de ayuda", "proveedor/perfil"=>"Perfil y horario", "proveedor/operacion"=>"Operación y confirmación", "proveedor/servicios"=>"Servicios que ofreces", "proveedor/recursos"=>"Disponibilidad de recursos", "proveedor/solicitudes"=>"Bandeja de solicitudes", "proveedor/historia"=>"Historia de actividad", "catalogo"=>"Directorio de ayuda", "admin"=>"Panorama territorial", "admin/proveedores"=>"Red de proveedores", "admin/pendientes"=>"Solicitudes pendientes", "admin/indicadores"=>"Indicadores de la demo", _ when Path.Contains("/solicitudes/")=>"Detalle de solicitud", _ when Path.StartsWith("catalogo/")=>"Detalle del proveedor", _=>"Hola, qué bueno tenerte aquí." };
-    private string Category => IsAdmin ? "ADMINISTRACIÓN · DEMOSTRACIÓN" : Path.StartsWith("catalogo") ? "NUESTRA COMUNIDAD" : "PROVEEDOR · DEMOSTRACIÓN";
+    private string Title => Path switch { "acceso"=>"Bienvenido a Pulso PR", "recuperacion"=>"Recuperar acceso", "seleccionar"=>"Elige tu espacio de ayuda", "proveedor/perfil"=>"Perfil y horario", "proveedor/operacion"=>"Operación y confirmación", "proveedor/servicios"=>"Servicios que ofreces", "proveedor/recursos"=>"Disponibilidad de recursos", "proveedor/solicitudes"=>"Bandeja de solicitudes", "proveedor/historia"=>"Historia de actividad", "catalogo"=>"Directorio de ayuda", "admin"=>"Panorama territorial", "admin/proveedores"=>"Red de proveedores", "admin/pendientes"=>"Solicitudes pendientes", "admin/indicadores"=>"Indicadores", _ when Path.Contains("/solicitudes/")=>"Detalle de solicitud", _ when Path.StartsWith("catalogo/")=>"Detalle del proveedor", _=>"Hola, qué bueno tenerte aquí." };
+    private string Category => IsAdmin ? "ADMINISTRACIÓN · PUERTO RICO" : Path.StartsWith("catalogo") ? "NUESTRA COMUNIDAD" : "PROVEEDOR · PUERTO RICO";
     private string Subtitle => Path switch { "admin"=>"Una visión de la ayuda disponible y las necesidades por coordinar.", "catalogo" or "admin/proveedores"=>"Personas, organizaciones y centros comunitarios que conectan ayuda.", "proveedor/solicitudes" or "admin/pendientes"=>"Revisa necesidades no urgentes y coordina el siguiente paso.", _=>"Información clara para una comunidad mejor conectada." };
     private string StateTitle => Estado switch { "error"=>"No pudimos cargar la información", "sin-acceso"=>"No tienes un proveedor asignado", "sesion"=>"Tu sesión ha vencido", _=>"Todavía no hay información" };
-    private string StateDescription => Estado switch { "error"=>"Revisa la conexión y vuelve a intentar. No se guardaron cambios.", "sin-acceso"=>"Solicita una asignación al responsable del portal. Este estado es simulado.", "sesion"=>"Vuelve al acceso demo para continuar. No se muestran datos en este estado.", _=>"Cuando haya información para esta vista, la encontrarás aquí." };
+    private string StateDescription => Estado switch { "error"=>"Revisa la conexión y vuelve a intentar. No se guardaron cambios.", "sin-acceso"=>"Solicita una asignación al responsable del portal.", "sesion"=>"Cambia de perfil para continuar.", _=>"Cuando haya información para esta vista, la encontrarás aquí." };
     private string StateIcon => Estado switch { "error"=>Icons.Material.Outlined.CloudOff, "sin-acceso"=>Icons.Material.Outlined.Lock, "sesion"=>Icons.Material.Outlined.Login, _=>Icons.Material.Outlined.Inbox };
     protected override void OnInitialized() => Nav.LocationChanged += LocationChanged;
-    protected override async Task OnAfterRenderAsync(bool firstRender) { if (firstRender) await RefreshRemoteData(); }
+    private string? QueryValue(string key)
+    {
+        foreach (var item in new Uri(Nav.Uri).Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts=item.Split('=',2);
+            if (Uri.UnescapeDataString(parts[0])==key) return parts.Length>1 ? Uri.UnescapeDataString(parts[1].Replace('+',' ')) : "";
+        }
+        return null;
+    }
+    private string? RecoveryUserId => QueryValue("userId");
+    private string? RecoverySecret => QueryValue("secret");
+    protected override async Task OnAfterRenderAsync(bool firstRender) { if (firstRender && !IsAccessPage && Auth.Session is not null) await RefreshRemoteData(); }
     private async Task RefreshRemoteData()
     {
         Store.SetLoading(); await InvokeAsync(StateHasChanged);
-        try { Store.Load(await Api.LoadDemoDataAsync()); LoadView(); await InvokeAsync(StateHasChanged); }
+        try { Store.Load(await Api.LoadDemoDataAsync(Auth.Session!)); LoadView(); await InvokeAsync(StateHasChanged); }
         catch { Store.SetLoadError("Appwrite no está disponible"); await InvokeAsync(StateHasChanged); }
     }
     protected override void OnParametersSet() => LoadView();
@@ -513,7 +572,41 @@ else
     // route parameters changing, so navigation must explicitly refresh the view.
     private void LocationChanged(object? sender, LocationChangedEventArgs e) => _=InvokeAsync(() => { LoadView(); StateHasChanged(); });
     public void Dispose() => Nav.LocationChanged -= LocationChanged;
-    private void Enter(bool admin) { Store.Role=admin ? "admin" : "proveedor"; Nav.NavigateTo(admin ? "/admin" : "/seleccionar"); }
+    private async Task SignInAsync()
+    {
+        if (accessForm is null) return; await accessForm.ValidateAsync(); if (!accessForm.IsValid) return;
+        authBusy=true; accessError=false;
+        try
+        {
+            var session=await Api.SignInAsync(loginEmail.Trim(),loginPassword); Auth.Set(session); Store.Role=session.Role!;
+            Nav.NavigateTo(session.Role=="admin" ? "/admin" : "/proveedor", replace:true);
+            await RefreshRemoteData();
+        }
+        catch { accessError=true; }
+        finally { authBusy=false; }
+    }
+    private async Task RecoveryAsync()
+    {
+        if (recoveryForm is null) return; await recoveryForm.ValidateAsync(); if (!recoveryForm.IsValid) return;
+        authBusy=true; recoveryError=""; recoveryNotice=false;
+        try
+        {
+            if (RecoveryUserId is { Length: > 0 } userId && RecoverySecret is { Length: > 0 } secret)
+            {
+                if (recoveryPassword.Length is < 8 or > 256) { recoveryError="Usa una contraseña de 8 a 256 caracteres."; return; }
+                await Api.CompleteRecoveryAsync(userId,secret,recoveryPassword); recoveryNotice=true;
+                Snackbar.Add("Contraseña actualizada. Ya puedes iniciar sesión.",Severity.Success);
+                Nav.NavigateTo("/acceso");
+            }
+            else
+            {
+                var callback=new Uri(new Uri(Nav.BaseUri),"recuperacion").ToString();
+                await Api.RequestRecoveryAsync(recoveryEmail.Trim(),callback); recoveryNotice=true;
+            }
+        }
+        catch { recoveryError="No se pudo completar la recuperación. Revisa el correo o el enlace e inténtalo de nuevo."; }
+        finally { authBusy=false; }
+    }
     private void SelectProvider(string id) { Store.SelectedId=id; Store.Role="proveedor"; Nav.NavigateTo("/proveedor"); }
     private void ResetState() => Nav.NavigateTo(Estado=="sesion" ? "/acceso" : Nav.GetUriWithQueryParameter("estado",(string?)null));
     private void ClearFilters() { search=""; municipalityFilter=typeFilter="todos"; }
@@ -530,7 +623,7 @@ else
         {
             await Api.SaveProviderAsync(edited,section);
             Store.Save(edited,section);
-            Snackbar.Add("Cambio guardado en el demo sintético.",Severity.Success);
+            Snackbar.Add("Cambios guardados.",Severity.Success);
         }
         catch
         {
@@ -549,9 +642,9 @@ else
         var note=response.Trim();
         try
         {
-            await Api.RespondToRequestAsync(request.Id,status,note);
+            await Api.RespondToRequestAsync(request.Id,status,note,Auth.Session!.Id);
             request.Status=status; request.Events.Add((status,DateTimeOffset.UtcNow,note)); response="";
-            Snackbar.Add("Respuesta guardada en el demo sintético.",Severity.Success);
+            Snackbar.Add("Respuesta guardada.",Severity.Success);
         }
         catch { Snackbar.Add("La actualización o su evento no se completaron. Refresca la solicitud antes de volver a responder.",Severity.Error); }
     }

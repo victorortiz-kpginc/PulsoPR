@@ -2,12 +2,26 @@
 @implements IDisposable
 @inject DemoStore Store
 @inject NavigationManager Nav
+@inject PulsoPR.Web.Models.AppwritePortalApi Api
+@inject PulsoPR.Web.Models.PortalAuthState Auth
 <MudThemeProvider Theme="@theme" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
+@if (!Auth.Ready)
+{
+    <main class="state-panel" role="status">Verificando tu sesión…</main>
+}
+else if (!IsAccessPage && !Auth.CanView(CurrentPath))
+{
+    <main class="state-panel" role="status">Abriendo el espacio de trabajo asignado…</main>
+}
+else
+{
 <a class="skip-link" href="#contenido">Saltar al contenido</a>
-<div class="app-shell">
+<div class="app-shell @(IsAccessPage ? "access-shell" : "")">
+    @if (!IsAccessPage)
+    {
     <aside class="sidebar @(menuOpen ? "is-open" : "")" aria-label="Navegación principal">
         <a class="brand" href="/" aria-label="Pulso PR inicio"><img class="brand-mark" src="brand/pulsopr-logo-horizontal.svg" alt="Pulso PR" /><small>Conectamos ayuda</small></a>
         <div class="sidebar-section">ESPACIO DE TRABAJO</div>
@@ -32,30 +46,59 @@
         </MudNavMenu>
         <div class="sidebar-section">COMUNIDAD</div>
         <MudNavMenu Class="portal-nav"><MudNavLink Href="/catalogo" Icon="@Icons.Material.Outlined.Explore">Directorio de ayuda</MudNavLink></MudNavMenu>
-        <div class="sidebar-bottom"><div class="demo-note"><span class="demo-dot"></span> Prototipo · Datos ficticios</div><p>Información reportada.<br />Coordina antes de acudir.</p><MudButton Href="/acceso" Size="Size.Small" StartIcon="@Icons.Material.Outlined.Logout">Cambiar acceso demo</MudButton></div>
+        <MudNavMenu Class="portal-nav"><MudNavLink Href="/mapa" Icon="@Icons.Material.Outlined.Map">Mapa comunitario</MudNavLink></MudNavMenu>
+        <div class="sidebar-bottom"><div class="demo-note"><span class="demo-dot"></span> Información comunitaria</div><p>Información reportada.<br />Coordina antes de acudir.</p><MudButton Href="/acceso" Size="Size.Small" StartIcon="@Icons.Material.Outlined.Logout">Cambiar perfil</MudButton></div>
     </aside>
     @if (menuOpen) { <button class="menu-scrim" aria-label="Cerrar navegación" @onclick="()=>menuOpen=false"></button> }
+    }
     <div class="workspace">
+        @if (!IsAccessPage)
+        {
         <header class="topbar">
             <MudIconButton Class="menu-toggle" Icon="@Icons.Material.Outlined.Menu" aria-label="Abrir navegación" OnClick="()=>menuOpen=!menuOpen" />
             <div class="topbar-context">Portal de ayuda <span>/</span> <strong>@(Store.Role == "admin" ? "Administración" : "Proveedor")</strong></div>
-            <div class="topbar-actions"><span class="review-label">MVP · Datos de demostración</span><MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="SwitchRole">@(Store.Role == "admin" ? "Ver como proveedor" : "Ver como administración")</MudButton><span class="avatar">@(Store.Role == "admin" ? "AD" : "PR")</span></div>
+            <div class="topbar-actions"><span class="review-label">Puerto Rico · Comunidad</span><span class="avatar">@(Store.Role == "admin" ? "AD" : "PR")</span><MudButton Size="Size.Small" OnClick="LogoutAsync">Cerrar sesión</MudButton></div>
         </header>
+        }
         <main id="contenido" tabindex="-1">@Body</main>
-        <footer class="app-footer"><span>Pulso PR · Una comunidad, más posibilidades.</span><span>Demo sintética · Hora de Puerto Rico</span></footer>
+        <footer class="app-footer"><span>Pulso PR · Una comunidad, más posibilidades.</span><span>Hora de Puerto Rico</span></footer>
     </div>
 </div>
+}
 @code {
     private bool menuOpen;
+    private bool IsAccessPage => new Uri(Nav.Uri).AbsolutePath.TrimEnd('/') is "/acceso" or "/recuperacion";
     private readonly MudTheme theme = new()
     {
         PaletteLight = new PaletteLight { Primary="#075989", PrimaryDarken="#064669", PrimaryLighten="#E8F3F8", Secondary="#FF584D", Background="#F5F8FA", Surface="#FFFFFF", TextPrimary="#173044", TextSecondary="#687985", LinesDefault="#DCE7EC", Success="#176A55", Warning="#936427", Error="#B95549", Info="#075989" },
         LayoutProperties = new LayoutProperties { DefaultBorderRadius="12px" },
         Typography = new Typography { Default = new DefaultTypography { FontFamily=["Inter", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "sans-serif"] } }
     };
-    private void SwitchRole() { Store.Role=Store.Role=="admin" ? "proveedor" : "admin"; menuOpen=false; Nav.NavigateTo(Store.Role=="admin" ? "/admin" : "/proveedor"); }
-    protected override void OnParametersSet() { var path=new Uri(Nav.Uri).AbsolutePath; if(path.StartsWith("/admin")) Store.Role="admin"; else if(path.StartsWith("/proveedor")) Store.Role="proveedor"; }
-    protected override void OnInitialized() => Nav.LocationChanged += LocationChanged;
-    private void LocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) { menuOpen=false; OnParametersSet(); _=InvokeAsync(StateHasChanged); }
+    private string CurrentPath => new Uri(Nav.Uri).AbsolutePath.Trim('/');
+    protected override async Task OnInitializedAsync()
+    {
+        Nav.LocationChanged += LocationChanged;
+        try { Auth.Set(await Api.CurrentSessionAsync()); } catch { Auth.Set(null); }
+        ApplyRoute();
+    }
+    private void ApplyRoute()
+    {
+        var path = CurrentPath;
+        if (IsAccessPage)
+        {
+            if (Auth.Session?.Role is "provider" or "admin") Nav.NavigateTo(Auth.Session.Role == "admin" ? "/admin" : "/proveedor", replace: true);
+            return;
+        }
+        if (Auth.Session?.Role is not ("provider" or "admin")) { Nav.NavigateTo("/acceso", replace: true); return; }
+        if (path.Length == 0) { Nav.NavigateTo(Auth.Session.Role == "admin" ? "/admin" : "/proveedor", replace: true); return; }
+        if (Auth.Session.Role == "provider" && path.StartsWith("admin", StringComparison.Ordinal)) { Nav.NavigateTo("/proveedor", replace: true); return; }
+        if (Auth.Session.Role == "admin" && path.StartsWith("proveedor", StringComparison.Ordinal)) { Nav.NavigateTo("/admin", replace: true); return; }
+        Store.Role = Auth.Session.Role;
+    }
+    private void LocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) { menuOpen=false; ApplyRoute(); _=InvokeAsync(StateHasChanged); }
+    private async Task LogoutAsync()
+    {
+        try { await Api.SignOutAsync(); } finally { Auth.Clear(); Store.SetLoading(); Nav.NavigateTo("/acceso", replace: true); }
+    }
     public void Dispose() => Nav.LocationChanged -= LocationChanged;
 }

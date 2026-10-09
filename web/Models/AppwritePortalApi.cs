@@ -8,6 +8,8 @@ public sealed class AppwritePortalApi(IJSRuntime js, IConfiguration configuratio
     private static readonly IReadOnlyDictionary<string, string> Collections = new Dictionary<string, string>
     {
         ["facilities"] = "facilities",
+        ["municipalities"] = "municipalities",
+        ["incidents"] = "incidents",
         ["facilityServices"] = "facility_services",
         ["facilityOperationalStatus"] = "facility_operational_status",
         ["resourceAvailability"] = "resource_availability",
@@ -35,11 +37,32 @@ public sealed class AppwritePortalApi(IJSRuntime js, IConfiguration configuratio
     public async Task<RemotePortalData> LoadDemoDataAsync() =>
         await (await ModuleAsync()).InvokeAsync<RemotePortalData>("loadDemoData");
 
+    public async Task<RemotePortalData> LoadDemoDataAsync(AuthSession session) =>
+        await (await ModuleAsync()).InvokeAsync<RemotePortalData>("loadDemoData", session);
+
+    public async Task<AuthSession?> CurrentSessionAsync() =>
+        await (await ModuleAsync()).InvokeAsync<AuthSession?>("currentSession");
+
+    public async Task<AuthSession> SignInAsync(string email, string password) =>
+        await (await ModuleAsync()).InvokeAsync<AuthSession>("signIn", email, password);
+
+    public async Task SignOutAsync() =>
+        await (await ModuleAsync()).InvokeVoidAsync("signOut");
+
+    public async Task RequestRecoveryAsync(string email, string url) =>
+        await (await ModuleAsync()).InvokeVoidAsync("requestRecovery", email, url);
+
+    public async Task CompleteRecoveryAsync(string userId, string secret, string password) =>
+        await (await ModuleAsync()).InvokeVoidAsync("finishRecovery", userId, secret, password);
+
     public async Task SaveProviderAsync(ProviderView provider, string section) =>
         await (await ModuleAsync()).InvokeVoidAsync("saveProvider", provider, section);
 
-    public async Task RespondToRequestAsync(string id, string status, string note) =>
-        await (await ModuleAsync()).InvokeVoidAsync("respondToRequest", id, status, note);
+    public async Task RespondToRequestAsync(string id, string status, string note, string actorId) =>
+        await (await ModuleAsync()).InvokeVoidAsync("respondToRequest", id, status, note, actorId);
+
+    public async Task<GeographicMapData> LoadGeographicMapAsync(string municipalityId, int radiusKm, string providerType, double? latitude = null, double? longitude = null, string? role = null, string? teamId = null) =>
+        await (await ModuleAsync()).InvokeAsync<GeographicMapData>("loadGeographicMap", new { municipalityId, radiusKm, providerType, latitude, longitude, role, teamId });
 
     public async ValueTask DisposeAsync()
     {
