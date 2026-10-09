@@ -1,14 +1,14 @@
 :root {
-  --ink:#1c3029;
-  --muted:#68776f;
-  --green:#176a55;
-  --green-dark:#0f5544;
-  --mint:#e8f3ed;
-  --peach:#f9e9dc;
+  --ink:#173044;
+  --muted:#687985;
+  --green:#075989;
+  --green-dark:#064669;
+  --mint:#e8f3f8;
+  --peach:#fff0ed;
   --lavender:#eee9f6;
-  --line:#e4e9e4;
+  --line:#dce7ec;
   --paper:#fff;
-  --canvas:#f6f8f5
+  --canvas:#f5f8fa
 }
 * {
   box-sizing:border-box
@@ -85,8 +85,9 @@ p {
 }
 .brand {
   display:flex;
-  gap:10px;
-  align-items:center;
+  gap:3px;
+  flex-direction:column;
+  align-items:flex-start;
   text-decoration:none;
   padding:0 12px 26px;
   font-size:19px;
@@ -105,22 +106,16 @@ p {
   margin-top:3px
 }
 .brand-mark {
-  display:grid;
-  place-items:center;
+  display:block;
   flex:none;
-  width:36px;
-  height:36px;
-  background:var(--green);
-  border-radius:11px;
-  color:white;
-  line-height:1;
-  font-weight:700;
-  font-size:24px
+  width:156px;
+  height:46px;
+  object-fit:contain
 }
 .sidebar-section {
   font-size:9px;
   letter-spacing:1.4px;
-  color:#82928a;
+  color:#687985;
   font-weight:700;
   padding:20px 14px 10px
 }
@@ -129,11 +124,11 @@ p {
   margin:3px 0;
   padding:12px;
   font-size:12px;
-  color:#586b61
+  color:#4c6575
 }
 .portal-nav .mud-nav-link.active {
   color:var(--green);
-  background:#e8f3ec;
+  background:#e8f3f8;
   font-weight:700
 }
 .portal-nav .mud-nav-link-icon {
@@ -176,7 +171,7 @@ p {
   color:var(--muted)
 }
 .topbar-context span {
-  color:#b7c2bc;
+  color:#b7c2cc;
   padding:0 12px
 }
 .topbar-context strong {
@@ -198,7 +193,7 @@ p {
   width:33px;
   height:33px;
   border-radius:50%;
-  background:#e7eee8;
+  background:#e8f3f8;
   color:var(--green);
   font-size:10px;
   font-weight:700
@@ -235,7 +230,7 @@ main {
   margin:0 0 22px;
   color:var(--muted);
   font-size:11px;
-  border:1px dashed #d6e0d8;
+  border:1px dashed #dce7ec;
   border-radius:8px;
   padding:9px 12px
 }
@@ -258,8 +253,8 @@ main {
 .hero-panel {
   padding:32px 36px;
   border-radius:15px;
-  background:#e7efe6;
-  border:1px solid #dce7d9;
+  background:#e8f2f7;
+  border:1px solid #dce7ec;
   display:flex;
   align-items:center;
   justify-content:space-between;
@@ -270,7 +265,7 @@ main {
   font-size:9px;
   font-weight:700;
   letter-spacing:1.5px;
-  color:#507063
+  color:#075989
 }
 .hero-panel h2,.admin-intro h2 {
   font-size:30px;
@@ -279,7 +274,7 @@ main {
   margin:12px 0
 }
 .hero-panel p {
-  color:#5a7164;
+  color:#4c6575;
   font-size:12px;
   max-width:400px;
   margin-bottom:20px
@@ -299,9 +294,9 @@ main {
   position:absolute;
   width:170px;
   height:170px;
-  border:1px solid #b9cebc;
+  border:1px solid #b9cedc;
   border-radius:50%;
-  box-shadow:0 0 0 22px #dae7d9,0 0 0 23px #c5d6c5
+  box-shadow:0 0 0 22px #dae7ef,0 0 0 23px #c5d6e2
 }
 .mark-core {
   z-index:1;
@@ -311,20 +306,20 @@ main {
   width:92px;
   border-radius:27px;
   transform:rotate(-9deg);
-  background:#14786d;
-  color:#f7faf3;
+  background:#075989;
+  color:#f5f8fa;
   font-size:62px;
   font-weight:400;
-  box-shadow:0 12px 24px #7a9c8633
+  box-shadow:0 12px 24px #07598933
 }
 .mark-caption {
   position:absolute;
   bottom:0;
-  background:#f9faf5;
+  background:#f5f8fa;
   padding:8px 15px;
   border-radius:25px;
   font-size:10px;
-  box-shadow:0 5px 12px #9aa68b22
+  box-shadow:0 5px 12px #07598922
 }
 .stat-grid {
   display:grid;
@@ -361,7 +356,7 @@ main {
   line-height:1.3
 }
 .stat-card>small {
-  color:#7a8a80;
+  color:#687985;
   font-size:10px
 }
 .status-pill {
@@ -373,8 +368,8 @@ main {
   white-space:nowrap;
   font-size:10px;
   font-weight:600;
-  background:#f0f2ef;
-  color:#6b7771
+  background:#edf2f5;
+  color:#687985
 }
 .status-dot {
   display:block;
@@ -429,7 +424,7 @@ main {
   padding:5px 14px
 }
 .request-table .mud-table-cell {
-  border-color:#edf0ec;
+  border-color:#dce7ec;
   font-size:11px;
   padding:18px 12px;
   vertical-align:middle
@@ -496,7 +491,7 @@ main {
   font-size:12px
 }
 .guidance {
-  background:#f3f6ef!important
+  background:#e8f3f8!important
 }
 .guidance h2 {
   margin:10px 0 15px
@@ -507,13 +502,13 @@ main {
 }
 .note-box {
   padding:16px;
-  border:1px solid #d9e5d7;
+  border:1px solid #dce7ec;
   border-radius:8px;
   font-size:12px;
   line-height:1.7;
   background:#ffffff80;
   margin-top:22px;
-  color:#516a5a
+  color:#4c6575
 }
 .filter-row {
   display:flex;
@@ -561,22 +556,22 @@ main {
 .provider-icon {
   display:grid;
   place-items:center;
-  background:#e9f1e9;
-  color:#33766b;
+  background:#e8f3f8;
+  color:#075989;
   width:40px;
   height:40px;
   border-radius:10px
 }
 .confirmation {
   font-size:10px;
-  color:#627569;
+  color:#687985;
   padding:17px 0 0;
   margin-top:20px;
   border-top:1px solid var(--line);
   line-height:1.8
 }
 .confirmation small {
-  color:#8a968d;
+  color:#8796a0;
   font-size:10px
 }
 .timeline {
@@ -587,7 +582,7 @@ main {
 .timeline li {
   position:relative;
   padding:0 0 28px 28px;
-  border-left:1px solid #d7e2d9;
+  border-left:1px solid #dce7ec;
   margin-left:7px
 }
 .timeline li:before {
@@ -599,7 +594,7 @@ main {
   background:var(--green);
   left:-5px;
   top:6px;
-  box-shadow:0 0 0 4px #edf3ed
+  box-shadow:0 0 0 4px #e8f3f8
 }
 .timeline strong {
   font-size:13px
@@ -673,14 +668,14 @@ main {
 }
 .bar-track {
   flex:1;
-  background:#edf2ed;
+  background:#edf2f5;
   border-radius:4px;
   height:12px;
   overflow:hidden
 }
 .bar-track>div {
   height:100%;
-  background:#559287;
+  background:#075989;
   border-radius:4px
 }
 .priority-row {
@@ -703,10 +698,10 @@ main {
   margin-left:auto
 }
 .priority-icon {
-  background:#e7efe7;
+  background:#e8f3f8;
   padding:10px;
   border-radius:9px;
-  color:#4e8271
+  color:#075989
 }
 .priority-icon.amber {
   background:#faf0df;
@@ -719,7 +714,7 @@ main {
   gap:25px
 }
 .access-story {
-  background:#e2ece1;
+  background:#e8f2f7;
   border-radius:15px;
   padding:40px;
   position:relative;
@@ -732,13 +727,13 @@ main {
 }
 .access-story p {
   font-size:13px;
-  color:#5e7766;
+  color:#4c6575;
   max-width:360px
 }
 .access-story small {
   position:absolute;
   bottom:25px;
-  color:#64816b;
+  color:#687985;
   font-size:11px
 }
 .access-art {
@@ -749,19 +744,19 @@ main {
 .access-art span {
   display:grid;
   place-items:center;
-  background:#c2d7c2;
-  border:1px solid #a8c1ac;
+  background:#c6dce8;
+  border:1px solid #9fc9dc;
   width:70px;
   height:70px;
   border-radius:25px;
-  color:#3f7862;
+  color:#075989;
   font-size:34px;
   transform:rotate(-8deg)
 }
 .access-art span:nth-child(2) {
-  background:#efe4cb;
-  border-color:#deceb0;
-  color:#b58a43;
+  background:#fff0ed;
+  border-color:#ffd5d0;
+  color:#FF584D;
   transform:rotate(7deg)
 }
 .access-panel {
@@ -804,7 +799,7 @@ main {
   display:flex;
   justify-content:space-between;
   font-size:10px;
-  color:#819084;
+  color:#687985;
   gap:14px
 }
 .skip-link {
@@ -918,7 +913,7 @@ h1:focus {
     display:block;
     position:fixed;
     inset:0;
-    background:#143f304a;
+    background:#1730444a;
     border:0;
     z-index:1190
   }

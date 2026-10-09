@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="PulsoPR logo">
+<path d="M128 14 C65 14 23 60 23 119 C23 156 42 187 76 216 L76 126 C76 92 96 71 128 71 C161 71 181 92 181 123 C181 154 161 174 128 174 L105 174 L105 209 L128 239 L204 155 C225 130 234 103 226 74 C213 36 176 14 128 14 Z" fill="#075989"/>
+<path d="M77 121 H99 L111 98 L128 147 L142 119 L151 124 L173 124" fill="none" stroke="#FF584D" stroke-width="12" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="177" cy="124" r="11" fill="#FF584D"/>
+</svg>

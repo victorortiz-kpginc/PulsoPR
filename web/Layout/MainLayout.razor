@@ -9,7 +9,7 @@
 <a class="skip-link" href="#contenido">Saltar al contenido</a>
 <div class="app-shell">
     <aside class="sidebar @(menuOpen ? "is-open" : "")" aria-label="Navegación principal">
-        <a class="brand" href="/" aria-label="Pulso PR inicio"><span class="brand-mark" aria-hidden="true">p</span><span>Pulso PR<small>Conectamos ayuda</small></span></a>
+        <a class="brand" href="/" aria-label="Pulso PR inicio"><img class="brand-mark" src="brand/pulsopr-logo-horizontal.svg" alt="Pulso PR" /><small>Conectamos ayuda</small></a>
         <div class="sidebar-section">ESPACIO DE TRABAJO</div>
         <MudNavMenu Class="portal-nav">
             @if (Store.Role == "admin")
@@ -49,7 +49,7 @@
     private bool menuOpen;
     private readonly MudTheme theme = new()
     {
-        PaletteLight = new PaletteLight { Primary="#176A55", PrimaryDarken="#0F5544", PrimaryLighten="#E8F3ED", Secondary="#F9E9DC", Background="#F6F8F5", Surface="#FFFFFF", TextPrimary="#1C3029", TextSecondary="#68776F", LinesDefault="#E4E9E4", Success="#176A55", Warning="#936427", Error="#B95549", Info="#3A6E87" },
+        PaletteLight = new PaletteLight { Primary="#075989", PrimaryDarken="#064669", PrimaryLighten="#E8F3F8", Secondary="#FF584D", Background="#F5F8FA", Surface="#FFFFFF", TextPrimary="#173044", TextSecondary="#687985", LinesDefault="#DCE7EC", Success="#176A55", Warning="#936427", Error="#B95549", Info="#075989" },
         LayoutProperties = new LayoutProperties { DefaultBorderRadius="12px" },
         Typography = new Typography { Default = new DefaultTypography { FontFamily=["Inter", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "sans-serif"] } }
     };
