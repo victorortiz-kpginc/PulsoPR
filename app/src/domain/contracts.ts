@@ -1,6 +1,6 @@
 // Persisted fields follow docs/backend/DATA-MODEL v1.1 and HACKATHON-MVP.
 export type ProviderType = 'person' | 'organization' | 'community_center';
-export interface Facility { $id: string; name: string; municipalityId: string; providerType?: ProviderType; address?: string | null; hours?: string | null; teamId?: string | null; phone?: string | null }
+export interface Facility { $id: string; name: string; municipalityId: string; providerType?: ProviderType; address?: string | null; latitude?: number | null; longitude?: number | null; hours?: string | null; teamId?: string | null; phone?: string | null }
 export type RequestStatus = 'submitted' | 'acknowledged' | 'confirmed' | 'declined' | 'completed';
 export interface AssistanceRequest { $id: string; citizenId: string; facilityId: string; municipalityId: string; serviceId: string; description: string; status: RequestStatus }
 export interface RequestEvent { $id: string; requestId: string; eventType: RequestStatus; actorId: string; occurredAt: string; responseNote?: string }

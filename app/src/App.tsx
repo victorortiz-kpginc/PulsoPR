@@ -1,16 +1,22 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { IonApp, IonButton, IonContent, IonInput, IonItem, IonLabel, IonPage, IonSelect, IonSelectOption, IonTextarea, IonToast } from '@ionic/react';
-import { BrowserRouter, Link, Route, Routes, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { BrowserRouter, Link, Navigate, Outlet, Route, Routes, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { kindText, providers, sampleEvents, sampleRequest, type PreviewProvider, type ProviderKind } from './preview/fixtures';
 import { municipalityOptions } from './preview/municipalities';
 import { statusText, type AssistanceRequest, type RequestEvent } from './domain/contracts';
 import { getCitizenRequest, getProvider, listCitizenRequests, listMunicipalityOptions, listProviders, municipalityCode, municipalityName, newOperationId, submitCitizenRequest } from './data/hackathonApi';
+import { GeographicMap } from './components/GeographicMap';
+import { completeRecovery, currentAccount, sendRecovery, signIn, signOut, type CitizenAccount } from './data/auth';
 
 const kinds: (ProviderKind | 'all')[] = ['all', 'person', 'organization', 'community_center'];
 const kindLabel = (kind: string) => kind === 'all' ? 'Todos' : kindText[kind as ProviderKind];
 const dateLabel = (value: string) => new Intl.DateTimeFormat('es-PR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 type DataSource = 'loading' | 'appwrite' | 'local';
 interface AppDemoState {
+  user: CitizenAccount | null;
+  authLoading: boolean;
+  authenticate: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
   providerRows: PreviewProvider[];
   setProviderRows: (rows: PreviewProvider[]) => void;
   municipalityRows: { code: string; name: string }[];
@@ -32,19 +38,28 @@ function useAppDemo() {
 }
 
 function Shell({ children, title = 'Pulso PR', back = false }: { children: React.ReactNode; title?: string; back?: boolean }) {
-  return <IonPage><header className="topbar"><div className="topbar-inner">{back && <button className="back" onClick={() => history.back()} aria-label="Volver">←</button>}<Link to="/" className="brand" aria-label={`${title} · Pulso PR`}><picture><source media="(max-width: 480px)" srcSet="/brand/pulsopr-icon.svg" /><img className="brand-mark" src="/brand/pulsopr-logo-horizontal.svg" alt="PulsoPR" /></picture><span className="brand-context">{title}</span></Link><Link to="/ayuda" className="help-link">Ayuda</Link></div></header><IonContent fullscreen><main className="page-content">{children}</main><footer className="footer"><span>Información comunitaria</span><Link to="/ayuda">Emergencias y contacto</Link></footer></IonContent></IonPage>;
+  const { user, logout } = useAppDemo();
+  return <IonPage><header className="topbar"><div className="topbar-inner">{back && <button className="back" onClick={() => history.back()} aria-label="Volver">←</button>}<Link to="/" className="brand" aria-label={`${title} · Pulso PR`}><picture><source media="(max-width: 480px)" srcSet="/brand/pulsopr-icon.svg" /><img className="brand-mark" src="/brand/pulsopr-logo-horizontal.svg" alt="PulsoPR" /></picture><span className="brand-context">{title}</span></Link><Link to="/ayuda" className="help-link">Ayuda</Link>{user && <button className="help-link" onClick={() => void logout()}>Cerrar sesión</button>}</div></header><IonContent fullscreen><main className="page-content">{children}</main><footer className="footer"><span>Información comunitaria</span><Link to="/ayuda">Emergencias y contacto</Link></footer></IonContent></IonPage>;
 }
 
 function AppRoutes() {
   const [toast, setToast] = useState('');
+  const [user, setUser] = useState<CitizenAccount | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const navigate = useNavigate();
   const [providerRows, setProviderRows] = useState<PreviewProvider[]>(providers);
   const [municipalityRows, setMunicipalityRows] = useState<{ code: string; name: string }[]>(municipalityOptions.map(row => ({ ...row })));
-  const [requestRows, setRequestRows] = useState<AssistanceRequest[]>([sampleRequest]);
+  const [requestRows, setRequestRows] = useState<AssistanceRequest[]>([]);
   const [activeRequest, setActiveRequest] = useState<AssistanceRequest>(sampleRequest);
-  const [requestEvents, setRequestEvents] = useState<RequestEvent[]>(sampleEvents);
-  const [localStateIds, setLocalStateIds] = useState<string[]>([sampleRequest.$id]);
+  const [requestEvents, setRequestEvents] = useState<RequestEvent[]>([]);
+  const [localStateIds, setLocalStateIds] = useState<string[]>([]);
   const [dataSource, setDataSource] = useState<DataSource>('loading');
   const [requestText, setRequestText] = useState('');
+  useEffect(() => { let mounted = true; void currentAccount().then(value => { if (mounted) { setUser(value); setAuthLoading(false); } }); return () => { mounted = false; }; }, []);
+  const authenticate = async (email: string, password: string) => {
+    const account = await signIn(email, password); setUser(account); navigate('/');
+  };
+  const logout = async () => { await signOut(); setUser(null); navigate('/acceso'); };
   const notify = (message: string) => setToast(message);
   useEffect(() => {
     let mounted = true;
@@ -53,38 +68,41 @@ function AppRoutes() {
   }, []);
   const refreshRequests = useCallback(async () => {
     try {
-      const rows = await listCitizenRequests();
+      if (!user) return;
+      const rows = await listCitizenRequests(user.$id);
       const storedIds = new Set(rows.map(row => row.$id));
       setRequestRows(current => [...rows, ...current.filter(row => !storedIds.has(row.$id))]);
       setLocalStateIds(current => current.filter(id => !storedIds.has(id)));
       setDataSource('appwrite');
     } catch { setDataSource('local'); }
-  }, []);
+  }, [user]);
   const refreshRequest = useCallback(async (requestId: string) => {
     try {
-      const result = await getCitizenRequest(requestId);
+      if (!user) return;
+      const result = await getCitizenRequest(requestId, user.$id);
       setActiveRequest(result.request);
       setRequestEvents(result.events);
       setRequestRows(current => [result.request, ...current.filter(row => row.$id !== requestId)]);
       setLocalStateIds(current => current.filter(id => id !== requestId));
       setDataSource('appwrite');
     } catch { setDataSource('local'); /* Keep the already labeled local/synthetic fallback. */ }
-  }, []);
+  }, [user]);
   const submitRequest = async (provider: PreviewProvider, description: string, requestId: string, eventId: string) => {
     let request: AssistanceRequest;
     let event: RequestEvent;
     let storedRemotely = false;
     try {
-      request = await submitCitizenRequest({ facilityId: provider.facility.$id, municipalityId: provider.facility.municipalityId, serviceId: 'pharmacy', description, requestId, eventId });
+      if (!user) throw new Error('AUTH_REQUIRED');
+      request = await submitCitizenRequest({ facilityId: provider.facility.$id, municipalityId: provider.facility.municipalityId, serviceId: 'pharmacy', description, requestId, eventId, citizenId: user.$id });
       storedRemotely = true;
-      event = { $id: eventId, requestId, eventType: 'submitted', actorId: 'demo-citizen', occurredAt: new Date().toISOString() };
+      event = { $id: eventId, requestId, eventType: 'submitted', actorId: user?.$id ?? '', occurredAt: new Date().toISOString() };
       setDataSource('appwrite');
       notify('Solicitud guardada.');
     } catch {
-      request = { $id: requestId, citizenId: 'demo-citizen', facilityId: provider.facility.$id, municipalityId: provider.facility.municipalityId, serviceId: 'pharmacy', description, status: 'submitted' };
-      event = { $id: eventId, requestId, eventType: 'submitted', actorId: 'demo-citizen', occurredAt: new Date().toISOString() };
+      if (!user) throw new Error('AUTH_REQUIRED');
       setDataSource('local');
-      notify('No se pudo sincronizar; tu solicitud se conserva en esta sesión.');
+      notify('No se pudo guardar la solicitud. Revisa tu conexión e inténtalo de nuevo.');
+      throw new Error('REQUEST_SAVE_FAILED');
     }
     setActiveRequest(request);
     setRequestEvents([event]);
@@ -92,21 +110,32 @@ function AppRoutes() {
     setRequestRows(current => [request, ...current.filter(row => row.$id !== request.$id)]);
     return request.$id;
   };
-  const data: AppDemoState = { providerRows, setProviderRows, municipalityRows, requestRows, activeRequest, requestEvents, localStateIds, dataSource, setDataSource, submitRequest, refreshRequest, refreshRequests };
+  const data: AppDemoState = { user, authLoading, authenticate, logout, providerRows, setProviderRows, municipalityRows, requestRows, activeRequest, requestEvents, localStateIds, dataSource, setDataSource, submitRequest, refreshRequest, refreshRequests };
   return <AppDemoContext.Provider value={data}><><Routes>
+    <Route element={<RequireCitizen />}>
     <Route path="/" element={<Home />} />
     <Route path="/resultados" element={<Results />} />
+    <Route path="/mapa" element={<Shell title="Mapa comunitario" back><GeographicMap /></Shell>} />
     <Route path="/proveedor/:id" element={<ProviderDetail onRequest={() => notify('No se pudo iniciar esta solicitud. Inténtalo de nuevo.')} />} />
-    <Route path="/acceso" element={<Access notify={notify} />} />
-    <Route path="/registro" element={<AccountPage title="Crear cuenta" description="Regístrate para dar seguimiento a tus solicitudes." action="Crear cuenta" onDone={() => notify('El registro aún no está disponible.')} />} />
-    <Route path="/verificacion" element={<AccountPage title="Verifica tu correo" description="Te enviaremos un enlace para confirmar tu dirección." action="Enviar enlace de verificación" onDone={() => notify('La verificación por correo aún no está disponible.')} />} />
-    <Route path="/recuperacion" element={<AccountPage title="Recuperar acceso" description="Escribe tu correo y te indicaremos cómo recuperar el acceso." action="Solicitar recuperación" onDone={() => notify('La recuperación de acceso aún no está disponible.')} />} />
     <Route path="/solicitud/:id" element={<NewRequest text={requestText} setText={setRequestText} onSubmit={submitRequest} />} />
     <Route path="/solicitudes" element={<Requests />} />
     <Route path="/seguimiento/:id" element={<Tracking />} />
+    </Route>
+    <Route path="/recuperacion" element={<AccountPage />} />
+    <Route path="/acceso" element={<Access />} />
+    <Route path="/registro" element={<Navigate to="/acceso" replace />} />
+    <Route path="/verificacion" element={<Navigate to="/acceso" replace />} />
     <Route path="/ayuda" element={<Help />} />
     <Route path="*" element={<NotFound />} />
   </Routes><IonToast isOpen={!!toast} message={toast} duration={3500} onDidDismiss={() => setToast('')} position="top" /></></AppDemoContext.Provider>;
+}
+
+function RequireCitizen() {
+  const { user, authLoading } = useAppDemo();
+  const location = window.location.pathname + window.location.search;
+  if (authLoading) return <Shell title="Tu cuenta"><p role="status">Verificando tu sesión…</p></Shell>;
+  if (!user) return <Navigate to={`/acceso?returnTo=${encodeURIComponent(location)}`} replace />;
+  return <Outlet />;
 }
 
 function Home() {
@@ -114,7 +143,7 @@ function Home() {
   const [municipality, setMunicipality] = useState('Adjuntas');
   const [need, setNeed] = useState('Medicamentos');
   const municipalityId = municipalityRows.find(row => row.name === municipality)?.code ?? municipalityCode(municipality);
-  return <Shell><section className="hero"><div className="hero-copy"><div className="eyebrow"><span className="live-dot" /> APOYO COMUNITARIO EN PUERTO RICO</div><h1>La ayuda empieza<br />con <em>estar conectados.</em></h1><p>Encuentra personas y organizaciones que comparten recursos y apoyo en tu comunidad.</p></div><div className="hero-art" aria-hidden="true"><span className="sun"/><span className="hill hill-one"/><span className="hill hill-two"/><span className="art-home">⌂</span><span className="art-heart">♥</span></div></section><section className="search-panel"><div className="search-heading"><span className="search-icon">⌕</span><div><h2>¿Qué necesitas hoy?</h2><p>Busca apoyo por municipio y servicio.</p></div></div><div className="search-fields"><label className="field-label">Municipio<IonSelect value={municipality} onIonChange={e => setMunicipality(e.detail.value)} interface="popover" aria-label="Municipio">{municipalityRows.map(m => <IonSelectOption key={m.code} value={m.name}>{m.name}</IonSelectOption>)}</IonSelect></label><label className="field-label">Tipo de ayuda<IonSelect value={need} onIonChange={e => setNeed(e.detail.value)} interface="popover" aria-label="Tipo de ayuda">{['Medicamentos', 'Alimentos', 'Artículos esenciales'].map(m => <IonSelectOption key={m} value={m}>{m}</IonSelectOption>)}</IonSelect></label><Link className="button button-primary search-submit" to={`/resultados?municipio=${encodeURIComponent(municipality)}&municipioId=${municipalityId}&servicio=${encodeURIComponent(need)}`}>Buscar apoyo <span>→</span></Link></div><div className="notice"><span>ⓘ</span> Pulso PR conecta comunidades. No es un servicio de emergencias ni garantiza disponibilidad.</div></section><section className="home-bottom"><div><span className="eyebrow">UNA RED, MUCHAS MANOS</span><h2>El apoyo puede venir<br />de distintos lugares.</h2><p>Personas, organizaciones y centros comunitarios participan del mismo flujo de ayuda.</p><Link className="text-link" to="/resultados">Explorar proveedores <span>→</span></Link></div><div className="type-grid">{(['person', 'organization', 'community_center'] as ProviderKind[]).map((kind, index) => <Link to={`/resultados?tipo=${kind}`} className={`type-card type-${index}`} key={kind}><span className="type-symbol">{['♡', '✳', '⌂'][index]}</span><span><strong>{kindLabel(kind)}</strong><small>Ver opciones de apoyo</small></span><span className="arrow">↗</span></Link>)}</div></section><QuickLinks /></Shell>;
+  return <Shell><section className="hero"><div className="hero-copy"><div className="eyebrow"><span className="live-dot" /> APOYO COMUNITARIO EN PUERTO RICO</div><h1>La ayuda empieza<br />con <em>estar conectados.</em></h1><p>Encuentra personas y organizaciones que comparten recursos y apoyo en tu comunidad.</p><Link className="button button-primary map-hero-link" to="/mapa">Explorar mapa comunitario <span>→</span></Link></div><div className="hero-art" aria-hidden="true"><span className="sun"/><span className="hill hill-one"/><span className="hill hill-two"/><span className="art-home">⌂</span><span className="art-heart">♥</span></div></section><section className="search-panel"><div className="search-heading"><span className="search-icon">⌕</span><div><h2>¿Qué necesitas hoy?</h2><p>Busca apoyo por municipio y servicio.</p></div></div><div className="search-fields"><label className="field-label">Municipio<IonSelect value={municipality} onIonChange={e => setMunicipality(e.detail.value)} interface="popover" aria-label="Municipio">{municipalityRows.map(m => <IonSelectOption key={m.code} value={m.name}>{m.name}</IonSelectOption>)}</IonSelect></label><label className="field-label">Tipo de ayuda<IonSelect value={need} onIonChange={e => setNeed(e.detail.value)} interface="popover" aria-label="Tipo de ayuda">{['Medicamentos', 'Alimentos', 'Artículos esenciales'].map(m => <IonSelectOption key={m} value={m}>{m}</IonSelectOption>)}</IonSelect></label><Link className="button button-primary search-submit" to={`/resultados?municipio=${encodeURIComponent(municipality)}&municipioId=${municipalityId}&servicio=${encodeURIComponent(need)}`}>Buscar apoyo <span>→</span></Link></div><div className="notice"><span>ⓘ</span> Pulso PR conecta comunidades. No es un servicio de emergencias ni garantiza disponibilidad.</div></section><section className="home-bottom"><div><span className="eyebrow">UNA RED, MUCHAS MANOS</span><h2>El apoyo puede venir<br />de distintos lugares.</h2><p>Personas, organizaciones y centros comunitarios participan del mismo flujo de ayuda.</p><Link className="text-link" to="/resultados">Explorar proveedores <span>→</span></Link></div><div className="type-grid">{(['person', 'organization', 'community_center'] as ProviderKind[]).map((kind, index) => <Link to={`/resultados?tipo=${kind}`} className={`type-card type-${index}`} key={kind}><span className="type-symbol">{['♡', '✳', '⌂'][index]}</span><span><strong>{kindLabel(kind)}</strong><small>Ver opciones de apoyo</small></span><span className="arrow">↗</span></Link>)}</div></section><QuickLinks /></Shell>;
 }
 
 function QuickLinks() { return <nav className="quick-links" aria-label="Acceso rápido"><Link to="/acceso">Entrar a mi cuenta</Link><Link to="/solicitudes">Mis solicitudes</Link></nav>; }
@@ -178,12 +207,18 @@ function ProviderDetail({ onRequest }: { onRequest: () => void }) {
   return <Shell title="Perfil comunitario" back><Link to="/resultados" className="text-link">← Volver a resultados</Link><section className="detail-hero"><div className={`avatar avatar-large avatar-${p.color}`}>{p.initials}</div><span className={`type-pill pill-${p.kind}`}>{kindLabel(p.kind)}</span><h1>{p.facility.name}</h1><p>{p.service} · {p.facility.municipalityId === '72001' ? 'Adjuntas, Puerto Rico' : 'Puerto Rico'}</p><div className={`detail-status ${recent ? 'status-good' : 'status-muted'}`}><span className="status-dot" />{recent ? p.operational : 'Sin confirmación reciente'}</div></section><div className="detail-grid"><section className="content-card"><h2>Sobre este proveedor</h2><p>{p.summary}</p><div className="detail-row"><span>Dirección</span><strong>{p.facility.address ?? 'No compartida'}</strong></div><div className="detail-row"><span>Horario</span><strong>{p.facility.hours ?? 'Consultar directamente'}</strong></div><div className="detail-row"><span>Servicios</span><strong>{p.service}</strong></div><div className="detail-row"><span>Recursos</span><strong>{p.resources}</strong></div><div className="detail-row"><span>Electricidad</span><strong>{p.electricity}</strong></div><div className="detail-row"><span>Generador</span><strong>{p.generator}</strong></div></section><aside className="content-card confirmation-card"><span className="eyebrow">ACTUALIZACIÓN</span><h2>{p.confirmation?.source === 'CommunityReported' ? 'Reporte de la comunidad' : recent ? 'Confirmación reciente' : 'Sin información reciente'}</h2><p>{p.confirmation ? `Actualizado ${dateLabel(p.confirmation.confirmedAt)}.` : 'Este perfil no tiene una actualización reciente.'}</p><small>La información puede cambiar. Confirma los detalles directamente antes de trasladarte.</small><a className="button button-outline" href="tel:+17875550100">Llamar al proveedor</a></aside></div><div className="detail-actions"><button className="button button-primary" onClick={() => navigate(`/solicitud/${p.facility.$id}`)}>Solicitar ayuda no urgente <span>→</span></button><button className="button button-quiet" onClick={onRequest}>¿Cómo funciona?</button></div><div className="notice"><span>ⓘ</span> No uses Pulso PR para emergencias. Si alguien está en peligro inmediato, llama al 9-1-1.</div></Shell>;
 }
 
-function Access({ notify }: { notify: (s: string) => void }) {
-  return <Shell title="Tu cuenta" back><div className="form-wrap"><div className="eyebrow">BIENVENIDO/A DE NUEVO</div><h1 className="page-title">Continúa con tu comunidad.</h1><p className="page-lead">Inicia sesión para enviar y seguir solicitudes.</p><div className="content-card form-card"><label className="field-label">Correo electrónico<IonInput type="email" placeholder="tu@correo.com" /></label><label className="field-label">Contraseña<IonInput type="password" placeholder="Tu contraseña" /></label><button className="button button-primary full-width" onClick={() => notify('El acceso por correo aún no está disponible.')}>Iniciar sesión</button><Link to="/recuperacion" className="text-link centered">¿Olvidaste tu contraseña?</Link><div className="form-divider"><span>o</span></div><p className="centered muted-text">¿Todavía no tienes cuenta?</p><Link className="button button-outline full-width" to="/registro">Crear una cuenta</Link></div><p className="demo-note centered">Continúa sin cuenta para explorar los recursos disponibles.</p><p className="centered"><Link className="text-link" to="/resultados">Continuar como ciudadano →</Link></p></div></Shell>;
+function Access() {
+  const { authenticate, user, logout } = useAppDemo();
+  const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
+  const submit = async () => { setBusy(true); setError(''); try { await authenticate(email.trim(), password); } catch { setError('No pudimos iniciar sesión. Verifica tus credenciales y que la cuenta sea ciudadana.'); } finally { setBusy(false); } };
+  return <Shell title="Tu cuenta" back><div className="form-wrap"><div className="eyebrow">BIENVENIDO/A DE NUEVO</div><h1 className="page-title">Continúa con tu comunidad.</h1><p className="page-lead">Inicia sesión para enviar y seguir solicitudes.</p><div className="content-card form-card">{user ? <><p>Sesión iniciada como {user.name}.</p><button className="button button-primary full-width" onClick={() => void logout()}>Cerrar sesión</button></> : <><label className="field-label">Correo electrónico<IonInput type="email" value={email} onIonInput={event => setEmail(String(event.detail.value ?? ''))} autocomplete="email" /></label><label className="field-label">Contraseña<IonInput type="password" value={password} onIonInput={event => setPassword(String(event.detail.value ?? ''))} autocomplete="current-password" /></label><button className="button button-primary full-width" disabled={busy || !email || !password} onClick={() => void submit()}>{busy ? 'Conectando…' : 'Iniciar sesión'}</button>{error && <p className="state-banner state-error" role="alert">{error}</p>}<Link to="/recuperacion" className="text-link centered">¿Olvidaste tu contraseña?</Link><p className="centered muted-text">El acceso se habilita para cuentas ciudadanas asignadas.</p></>}</div>{user && <p className="centered"><button className="text-link" onClick={() => void logout()}>Cerrar sesión</button></p>}</div></Shell>;
 }
 
-function AccountPage({ title, description, action, onDone }: { title: string; description: string; action: string; onDone: () => void }) {
-  return <Shell title={title} back><div className="form-wrap"><div className="eyebrow">TU CUENTA</div><h1 className="page-title">{title}</h1><p className="page-lead">{description}</p><div className="content-card form-card"><label className="field-label">Correo electrónico<IonInput type="email" placeholder="tu@correo.com" /></label>{title === 'Crear cuenta' && <><label className="field-label">Nombre<IonInput placeholder="Tu nombre" /></label><label className="field-label">Contraseña<IonInput type="password" placeholder="Crea una contraseña" /></label></>}<button className="button button-primary full-width" onClick={onDone}>{action}</button><Link className="text-link centered" to="/acceso">Volver a iniciar sesión</Link></div><p className="demo-note centered">El correo aún no está disponible.</p></div></Shell>;
+function AccountPage() {
+  const [search] = useSearchParams(); const userId = search.get('userId'); const secret = search.get('secret');
+  const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [busy, setBusy] = useState(false); const [message, setMessage] = useState(''); const [error, setError] = useState('');
+  const submit = async () => { setBusy(true); setMessage(''); setError(''); try { if (userId && secret) { if (password.length < 8) throw new Error('PASSWORD'); await completeRecovery(userId, secret, password); setMessage('Contraseña actualizada. Ya puedes iniciar sesión.'); } else { await sendRecovery(email.trim()); setMessage('Si el correo corresponde a una cuenta, recibirás instrucciones para recuperar el acceso.'); } } catch { setError(userId ? 'No se pudo actualizar la contraseña. Revisa el enlace e inténtalo de nuevo.' : 'No se pudo solicitar la recuperación. Verifica el correo e inténtalo de nuevo.'); } finally { setBusy(false); } };
+  return <Shell title="Recuperar acceso" back><div className="form-wrap"><div className="eyebrow">TU CUENTA</div><h1 className="page-title">Recuperar acceso</h1><p className="page-lead">{userId ? 'Elige una contraseña nueva para tu cuenta.' : 'Escribe el correo asociado a tu cuenta.'}</p><div className="content-card form-card">{!userId && <label className="field-label">Correo electrónico<IonInput type="email" value={email} onIonInput={event => setEmail(String(event.detail.value ?? ''))} autocomplete="email" /></label>}{userId && <label className="field-label">Nueva contraseña<IonInput type="password" value={password} onIonInput={event => setPassword(String(event.detail.value ?? ''))} autocomplete="new-password" /></label>}<button className="button button-primary full-width" disabled={busy || (userId ? password.length < 8 : !email)} onClick={() => void submit()}>{busy ? 'Procesando…' : userId ? 'Actualizar contraseña' : 'Enviar instrucciones'}</button>{message && <p role="status" className="state-banner">{message}</p>}{error && <p role="alert" className="state-banner state-error">{error}</p>}<Link className="text-link centered" to="/acceso">Volver a iniciar sesión</Link></div></div></Shell>;
 }
 
 function NewRequest({ text, setText, onSubmit }: { text: string; setText: (s: string) => void; onSubmit: (provider: PreviewProvider, description: string, requestId: string, eventId: string) => Promise<string> }) {
@@ -194,7 +229,8 @@ function NewRequest({ text, setText, onSubmit }: { text: string; setText: (s: st
   const [requestId] = useState(newOperationId());
   const [eventId] = useState(newOperationId());
   const [saving, setSaving] = useState(false);
-  return <Shell title="Solicitar apoyo" back><div className="form-wrap wide-form"><Link to={`/proveedor/${provider.facility.$id}`} className="text-link">← {provider.facility.name}</Link><div className="eyebrow">SOLICITUD NO URGENTE</div><h1 className="page-title">Cuéntanos qué necesitas.</h1><p className="page-lead">Comparte sólo la información mínima para que puedan responderte.</p><div className="content-card form-card"><div className="request-target"><span className="mini-avatar">{provider.initials}</span><div><strong>{provider.facility.name}</strong><small>{kindLabel(provider.kind)} · {provider.service}</small></div></div><label className="field-label">Tipo de ayuda<IonSelect value={provider.service} interface="popover">{[provider.service, 'Alimentos', 'Artículos esenciales'].map(s => <IonSelectOption key={s}>{s}</IonSelectOption>)}</IonSelect></label><label className="field-label">Mensaje<IonTextarea value={text} onIonInput={e => setText(e.detail.value ?? '')} autoGrow maxlength={240} placeholder="Describe brevemente lo que necesitas. No incluyas información médica." /></label><div className="character-count">{text.length}/240 caracteres</div><div className="notice"><span>ⓘ</span> No incluyas diagnósticos ni información médica. Enviar una solicitud no garantiza que la ayuda esté disponible.</div><label className="consent-line"><input type="checkbox" defaultChecked /> Entiendo que mi solicitud se compartirá con este proveedor.</label><button className="button button-primary full-width" onClick={async () => { setSaving(true); const savedId = await onSubmit(provider, text.trim(), requestId, eventId); setSaving(false); setText(''); navigate(`/seguimiento/${savedId}`); }} disabled={text.trim().length < 3 || saving}>{saving ? 'Guardando…' : 'Revisar y enviar'} <span>→</span></button></div><p className="demo-note centered">Tu información se utilizará para atender esta solicitud.</p></div></Shell>;
+  const [saveError, setSaveError] = useState('');
+  return <Shell title="Solicitar apoyo" back><div className="form-wrap wide-form"><Link to={`/proveedor/${provider.facility.$id}`} className="text-link">← {provider.facility.name}</Link><div className="eyebrow">SOLICITUD NO URGENTE</div><h1 className="page-title">Cuéntanos qué necesitas.</h1><p className="page-lead">Comparte sólo la información mínima para que puedan responderte.</p><div className="content-card form-card"><div className="request-target"><span className="mini-avatar">{provider.initials}</span><div><strong>{provider.facility.name}</strong><small>{kindLabel(provider.kind)} · {provider.service}</small></div></div><label className="field-label">Tipo de ayuda<IonSelect value={provider.service} interface="popover">{[provider.service, 'Alimentos', 'Artículos esenciales'].map(s => <IonSelectOption key={s}>{s}</IonSelectOption>)}</IonSelect></label><label className="field-label">Mensaje<IonTextarea value={text} onIonInput={e => setText(e.detail.value ?? '')} autoGrow maxlength={240} placeholder="Describe brevemente lo que necesitas. No incluyas información médica." /></label><div className="character-count">{text.length}/240 caracteres</div><div className="notice"><span>ⓘ</span> No incluyas diagnósticos ni información médica. Enviar una solicitud no garantiza que la ayuda esté disponible.</div><label className="consent-line"><input type="checkbox" defaultChecked /> Entiendo que mi solicitud se compartirá con este proveedor.</label>{saveError && <p role="alert" className="state-banner state-error">{saveError}</p>}<button className="button button-primary full-width" onClick={async () => { setSaving(true); setSaveError(''); try { const savedId = await onSubmit(provider, text.trim(), requestId, eventId); setText(''); navigate(`/seguimiento/${savedId}`); } catch { setSaveError('No se pudo guardar la solicitud. El texto permanece en el formulario para que puedas intentar otra vez.'); } finally { setSaving(false); } }} disabled={text.trim().length < 3 || saving}>{saving ? 'Guardando…' : 'Revisar y enviar'} <span>→</span></button></div><p className="demo-note centered">Tu información se utilizará para atender esta solicitud.</p></div></Shell>;
 }
 
 function Requests() {
@@ -209,14 +245,14 @@ function Requests() {
 
 function Tracking() {
   const { id } = useParams();
-  const { requestRows, activeRequest, requestEvents, providerRows, localStateIds, refreshRequest } = useAppDemo();
+  const { user, requestRows, activeRequest, requestEvents, providerRows, localStateIds, refreshRequest } = useAppDemo();
   useEffect(() => { if (id) void refreshRequest(id); }, [id, refreshRequest]);
   const request = requestRows.find(row => row.$id === id) ?? (activeRequest.$id === id ? activeRequest : sampleRequest);
   const provider = providerRows.find(row => row.facility.$id === request.facilityId) ?? providers.find(row => row.facility.$id === request.facilityId) ?? providers[0];
   const events = activeRequest.$id === request.$id ? requestEvents : request.$id === sampleRequest.$id ? sampleEvents : [];
   const visibleEvents = request.status === 'submitted' ? events.filter(event => event.eventType === 'submitted') : events;
   const created = (request as AssistanceRequest & { $createdAt?: string }).$createdAt ?? events[0]?.occurredAt ?? sampleEvents[0].occurredAt;
-  return <Shell title="Seguimiento" back><div className="eyebrow">SOLICITUD · {request.$id.slice(0, 12).toUpperCase()}</div><h1 className="page-title">Tu solicitud</h1><p className="page-lead">Creada {dateLabel(created)}</p>{localStateIds.includes(request.$id) && <div className="state-banner">Este cambio está pendiente de sincronizar. Revisa tu conexión.</div>}<button className="filter-reset" onClick={() => void refreshRequest(request.$id)}>Actualizar estado</button><section className="content-card tracking-card"><div className="tracking-head"><div><span className="type-pill pill-organization">{provider.facility.name}</span><h2>{request.description}</h2></div><span className="status-chip">{statusText[request.status]}</span></div><div className="timeline">{visibleEvents.map((item, i) => <div className="timeline-item" key={item.$id}><span className={`timeline-dot ${i === visibleEvents.length - 1 ? 'active' : ''}`} /><div><strong>{statusText[item.eventType]}</strong><small>{dateLabel(item.occurredAt)} · {item.actorId === 'demo-citizen' ? 'Tú' : 'Proveedor de ayuda'}</small>{item.responseNote && request.status !== 'submitted' && <p className="response-note">“{item.responseNote}”</p>}</div></div>)}</div></section><div className="notice"><span>ⓘ</span> Una solicitud enviada no confirma disponibilidad ni garantiza atención.</div><Link to="/solicitudes" className="text-link">← Volver a mis solicitudes</Link></Shell>;
+  return <Shell title="Seguimiento" back><div className="eyebrow">SOLICITUD · {request.$id.slice(0, 12).toUpperCase()}</div><h1 className="page-title">Tu solicitud</h1><p className="page-lead">Creada {dateLabel(created)}</p>{localStateIds.includes(request.$id) && <div className="state-banner">Este cambio está pendiente de sincronizar. Revisa tu conexión.</div>}<button className="filter-reset" onClick={() => void refreshRequest(request.$id)}>Actualizar estado</button><section className="content-card tracking-card"><div className="tracking-head"><div><span className="type-pill pill-organization">{provider.facility.name}</span><h2>{request.description}</h2></div><span className="status-chip">{statusText[request.status]}</span></div><div className="timeline">{visibleEvents.map((item, i) => <div className="timeline-item" key={item.$id}><span className={`timeline-dot ${i === visibleEvents.length - 1 ? 'active' : ''}`} /><div><strong>{statusText[item.eventType]}</strong><small>{dateLabel(item.occurredAt)} · {item.actorId === user?.$id ? 'Tú' : 'Proveedor de ayuda'}</small>{item.responseNote && request.status !== 'submitted' && <p className="response-note">“{item.responseNote}”</p>}</div></div>)}</div></section><div className="notice"><span>ⓘ</span> Una solicitud enviada no confirma disponibilidad ni garantiza atención.</div><Link to="/solicitudes" className="text-link">← Volver a mis solicitudes</Link></Shell>;
 }
 
 function Help() { return <Shell title="Ayuda y seguridad" back><div className="eyebrow">ESTAMOS PARA ORIENTARTE</div><h1 className="page-title">Ayuda para usar Pulso PR.</h1><p className="page-lead">Conoce el alcance de esta herramienta y dónde buscar ayuda urgente.</p><div className="help-grid"><section className="content-card emergency-card"><span className="help-icon">!</span><span className="eyebrow">EMERGENCIA</span><h2>¿Hay peligro inmediato?</h2><p>Pulso PR no atiende emergencias. Si alguien está en peligro inmediato, llama al servicio oficial de emergencias.</p><a className="button button-primary" href="tel:911">Llamar al 9-1-1</a></section><section className="content-card"><span className="eyebrow">SOBRE PULSO PR</span><h2>Coordinación comunitaria, no urgente.</h2><p>La información es compartida por proveedores de ayuda. Verifica directamente horarios y disponibilidad antes de salir.</p><div className="detail-row"><span>Datos mostrados</span><strong>Información de proveedores</strong></div><div className="detail-row"><span>Mensajes</span><strong>No se envían automáticamente</strong></div></section><section className="content-card"><span className="eyebrow">CONTACTO</span><h2>¿Necesitas orientación?</h2><p>El canal de soporte aún no está disponible.</p><Link to="/resultados" className="text-link">Volver a explorar proveedores →</Link></section></div></Shell>; }

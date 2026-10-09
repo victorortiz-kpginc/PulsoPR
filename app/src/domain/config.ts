@@ -1,2 +1,2 @@
 // Public demo identifiers from docs/backend/HACKATHON-MVP.md. No credentials.
-export const demoConfig = Object.freeze({ environment: 'dev-synthetic' as const, endpoint: 'https://nyc.cloud.appwrite.io/v1', projectId: '6ac82de0000ae8ab05a2', databaseId: 'pulso-pr', bucketId: 'facility-images', facilityId: 'hackathon-demo-pharmacy', requestId: 'hackathon-demo-request' });
+export const demoConfig = Object.freeze({ environment: 'dev-synthetic' as const, endpoint: 'https://nyc.cloud.appwrite.io/v1', projectId: '6ac82de0000ae8ab05a2', databaseId: 'pulso-pr', bucketId: 'facility-images', facilityId: 'hackathon-demo-pharmacy', requestId: 'hackathon-demo-request', openWeatherApiKey: import.meta.env.VITE_OPENWEATHER_API_KEY ?? '' });

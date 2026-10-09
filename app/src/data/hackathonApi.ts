@@ -58,6 +58,75 @@ export async function listProviders(options: { municipalityId?: string; provider
   return (result.documents as Row[]).map(previewFacility);
 }
 
+export interface GeographicPlace {
+  id: string; kind: 'provider' | 'incident'; name: string; type: string; municipality: string;
+  municipalityId: string; latitude: number; longitude: number; radiusMeters?: number;
+  detail: string; distanceKm: number | null;
+}
+
+function distanceKm(a: [number, number], b: [number, number]): number {
+  const rad = (value: number) => value * Math.PI / 180;
+  const dLat = rad(b[0] - a[0]), dLon = rad(b[1] - a[1]);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(dLon / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+async function listAllPages(collectionId: string, filters: string[]): Promise<Row[]> {
+  const rows: Row[] = [];
+  for (let offset = 0; offset < 5000; offset += 100) {
+    const result = await db.listDocuments({ databaseId, collectionId, queries: [...filters, Query.limit(100), Query.offset(offset)] });
+    rows.push(...result.documents as Row[]);
+    if (rows.length >= result.total || result.documents.length < 100) break;
+  }
+  return rows;
+}
+
+function boundingBox(center: [number, number], radiusKm: number) {
+  const latDelta = radiusKm / 110.574;
+  const lonDelta = radiusKm / (111.320 * Math.max(0.01, Math.cos(center[0] * Math.PI / 180)));
+  return { minLat: Math.max(-90, center[0] - latDelta), maxLat: Math.min(90, center[0] + latDelta), minLon: Math.max(-180, center[1] - lonDelta), maxLon: Math.min(180, center[1] + lonDelta) };
+}
+
+export async function listGeographicPlaces(options: { municipalityId?: string; center?: [number, number]; radiusKm: number; providerType?: ProviderKind }): Promise<GeographicPlace[]> {
+  const box = options.center ? boundingBox(options.center, options.radiusKm) : undefined;
+  const facilityFilters = [...(options.municipalityId ? [Query.equal('municipalityId', options.municipalityId)] : []), ...(options.providerType ? [Query.equal('providerType', options.providerType)] : []),
+    ...(box ? [Query.between('latitude', box.minLat, box.maxLat), Query.between('longitude', box.minLon, box.maxLon)] : [])];
+  const incidentFilters = [...(options.municipalityId ? [Query.equal('municipalityId', options.municipalityId)] : []), Query.equal('status', 'active'),
+    ...(box ? [Query.between('latitude', box.minLat, box.maxLat), Query.between('longitude', box.minLon, box.maxLon)] : [])];
+  let facilities: Row[], incidents: Row[];
+  try {
+    [facilities, incidents] = await Promise.all([listAllPages('facilities', facilityFilters), listAllPages('incidents', incidentFilters)]);
+  } catch (error) {
+    // DocumentsDB has scalar latitude/longitude; if this server rejects the paired range query,
+    // page by the selected municipality and keep exact filtering local.
+    if (!box) throw error;
+    [facilities, incidents] = await Promise.all([
+      listAllPages('facilities', [...(options.municipalityId ? [Query.equal('municipalityId', options.municipalityId)] : []), ...(options.providerType ? [Query.equal('providerType', options.providerType)] : [])]),
+      listAllPages('incidents', [...(options.municipalityId ? [Query.equal('municipalityId', options.municipalityId)] : []), Query.equal('status', 'active')])
+    ]);
+  }
+  const now = Date.now();
+  const providers = facilities.flatMap(row => {
+    // Number(null) is 0, which creates a false marker at Null Island for
+    // Facilities whose optional coordinates have not been set.
+    const latitude = typeof row.latitude === 'number' ? row.latitude : Number.NaN;
+    const longitude = typeof row.longitude === 'number' ? row.longitude : Number.NaN;
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return [];
+    const distance = options.center ? distanceKm(options.center, [latitude, longitude]) : null;
+    if (distance !== null && distance > options.radiusKm) return [];
+    return [{ id: row.$id, kind: 'provider' as const, name: String(row.name ?? 'Proveedor'), type: providerType(row) === 'person' ? 'Persona' : providerType(row) === 'community_center' ? 'Centro comunitario' : 'Organización', municipality: municipalityName(String(row.municipalityId ?? '')), municipalityId: String(row.municipalityId ?? ''), latitude, longitude, detail: String(row.address ?? 'Ubicación registrada'), distanceKm: distance ?? 0 }];
+  });
+  const activeIncidents = incidents.flatMap(row => {
+    if (row.status !== 'active' || Date.parse(String(row.validFrom ?? '')) > now || Date.parse(String(row.validUntil ?? '')) <= now) return [];
+    const latitude = Number(row.latitude), longitude = Number(row.longitude), radiusMeters = Number(row.radiusMeters);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !Number.isFinite(radiusMeters)) return [];
+    const distance = options.center ? distanceKm(options.center, [latitude, longitude]) : null;
+    if (distance !== null && distance * 1000 > options.radiusKm * 1000 + radiusMeters) return [];
+    return [{ id: row.$id, kind: 'incident' as const, name: String(row.title ?? row.incidentType ?? 'Incidente'), type: String(row.incidentType ?? 'Incidente comunitario'), municipality: municipalityName(String(row.municipalityId ?? '')), municipalityId: String(row.municipalityId ?? ''), latitude, longitude, radiusMeters, detail: String(row.description ?? 'Información comunitaria'), distanceKm: distance ?? 0 }];
+  });
+  return [...providers, ...activeIncidents].sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0));
+}
+
 export async function getProvider(facilityId: string): Promise<PreviewProvider> {
   const row = await db.getDocument(collection('facilities', facilityId)) as Row;
   const filter = [Query.equal('facilityId', facilityId), Query.limit(100)];
@@ -83,23 +152,22 @@ export async function getProvider(facilityId: string): Promise<PreviewProvider> 
   };
 }
 
-export async function listCitizenRequests(citizenId = 'demo-citizen'): Promise<AssistanceRequest[]> {
+export async function listCitizenRequests(citizenId: string): Promise<AssistanceRequest[]> {
   const result = await queryRows('assistance_requests', [Query.equal('citizenId', citizenId), Query.orderDesc('$createdAt'), Query.limit(100)]);
   return result.documents as unknown as AssistanceRequest[];
 }
 
-export async function getCitizenRequest(requestId: string): Promise<{ request: AssistanceRequest; events: RequestEvent[] }> {
-  const [request, events] = await Promise.all([
-    db.getDocument(collection('assistance_requests', requestId)),
-    queryRows('assistance_request_events', [Query.equal('requestId', requestId), Query.orderAsc('occurredAt'), Query.limit(100)]),
-  ]);
-  return { request: request as unknown as AssistanceRequest, events: events.documents as unknown as RequestEvent[] };
+export async function getCitizenRequest(requestId: string, citizenId: string): Promise<{ request: AssistanceRequest; events: RequestEvent[] }> {
+  const request = await db.getDocument(collection('assistance_requests', requestId)) as unknown as AssistanceRequest;
+  if (request.citizenId !== citizenId) throw new Error('REQUEST_NOT_OWNED_BY_CURRENT_USER');
+  const events = await queryRows('assistance_request_events', [Query.equal('requestId', requestId), Query.orderAsc('occurredAt'), Query.limit(100)]);
+  return { request, events: events.documents as unknown as RequestEvent[] };
 }
 
-async function createSubmittedEvent(requestId: string, eventId: string): Promise<void> {
+async function createSubmittedEvent(requestId: string, eventId: string, citizenId: string): Promise<void> {
   try {
     await db.createDocument({ ...collection('assistance_request_events', eventId), permissions: [], data: {
-      requestId, eventType: 'submitted', actorId: 'demo-citizen', occurredAt: new Date().toISOString(),
+      requestId, eventType: 'submitted', actorId: citizenId, occurredAt: new Date().toISOString(),
     } });
   } catch (error) {
     // A repeated attempt with the same operation ID must not duplicate its event.
@@ -109,12 +177,12 @@ async function createSubmittedEvent(requestId: string, eventId: string): Promise
 }
 
 export async function submitCitizenRequest(input: {
-  facilityId: string; municipalityId: string; serviceId: string; description: string; requestId: string; eventId: string;
+  facilityId: string; municipalityId: string; serviceId: string; description: string; requestId: string; eventId: string; citizenId: string;
 }): Promise<AssistanceRequest> {
   let request: AssistanceRequest;
   try {
     request = await db.createDocument({ ...collection('assistance_requests', input.requestId), permissions: [], data: {
-      citizenId: 'demo-citizen', facilityId: input.facilityId, municipalityId: input.municipalityId,
+      citizenId: input.citizenId, facilityId: input.facilityId, municipalityId: input.municipalityId,
       serviceId: input.serviceId, description: input.description, status: 'submitted',
     } }) as unknown as AssistanceRequest;
   } catch (error) {
@@ -125,7 +193,7 @@ export async function submitCitizenRequest(input: {
       request = existing;
     } catch { throw error; }
   }
-  await createSubmittedEvent(input.requestId, input.eventId);
+  await createSubmittedEvent(input.requestId, input.eventId, input.citizenId);
   return request;
 }
 
