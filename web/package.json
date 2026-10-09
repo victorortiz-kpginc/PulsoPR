@@ -1,6 +1,6 @@
 {
   "name": "pulso-pr-web", "version": "0.1.0", "private": true, "type": "module",
-  "scripts": {"build:sdk":"esbuild scripts/sdk-entry.js --bundle --format=esm --outfile=wwwroot/js/appwrite-sdk.js"},
+  "scripts": {"build:sdk":"esbuild scripts/sdk-entry.js --bundle --format=esm --outfile=wwwroot/js/appwrite-sdk.js", "test:api":"node --test tests/*.test.mjs"},
   "dependencies": {"appwrite":"26.2.0"},
   "devDependencies": {"esbuild":"0.25.12"}
 }

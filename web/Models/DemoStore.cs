@@ -31,13 +31,16 @@ public sealed class RequestView
     public string Description { get; set; } = "";
     public string Status { get; set; } = "submitted";
     public DateTimeOffset CreatedAt { get; set; }
-    public List<(string State, DateTimeOffset Time, string Note)> Events { get; } = [];
+    public List<(string State, DateTimeOffset Time, string Note)> Events { get; set; } = [];
 }
 public sealed class DemoStore
 {
     public string SelectedId { get; set; } = "demo-farmacia";
     public string Role { get; set; } = "proveedor";
-    public ProviderView Selected => Providers.Single(p => p.Id == SelectedId);
+    public ProviderView Selected => Providers.FirstOrDefault(p => p.Id == SelectedId) ?? Providers.FirstOrDefault() ?? new() { Id=SelectedId, Name="Proveedor demo" };
+    public bool IsConnected { get; private set; }
+    public bool IsLoading { get; private set; } = true;
+    public string? LoadError { get; private set; }
     public List<ProviderView> Providers { get; } =
     [
         new() { Id="demo-farmacia", Name="Farmacia Comunidad", Municipality="San Juan", Address="Calle Demo 24 · Dirección ficticia", Phone="Contacto de demostración", Hours="Lunes a viernes · 8:00 a. m. – 5:00 p. m.", State="operational", ConfirmedAt=DateTimeOffset.UtcNow.AddHours(-2), Note="Atendemos en horario regular. Coordina antes de visitar." },
@@ -69,11 +72,32 @@ public sealed class DemoStore
                 request.Events.Add(("completed", request.CreatedAt.AddMinutes(30), "Coordinación completada en la fixture."));
         }
     }
-    public void Save(ProviderView edited)
+    public void Load(RemotePortalData data)
+    {
+        Providers.Clear();
+        Providers.AddRange(data.Providers);
+        Requests.Clear();
+        Requests.AddRange(data.Requests.Select(r => new RequestView
+        {
+            Id=r.Id, FacilityId=r.FacilityId, Description=r.Description, Status=r.Status, CreatedAt=r.CreatedAt,
+            Events = r.Events.Select(e => (e.State, e.Time, e.Note)).ToList()
+        }));
+        History.Clear();
+        History.AddRange(data.History.Select(h => (h.FacilityId, h.Time, h.Title, h.Note)));
+        if (!Providers.Any(p => p.Id == SelectedId) && Providers.Count > 0) SelectedId=Providers[0].Id;
+        IsConnected=true;
+        IsLoading=false;
+        LoadError=null;
+    }
+    public void SetLoading() { IsLoading=true; LoadError=null; }
+    public void SetLoadError(string message) { IsConnected=false; IsLoading=false; LoadError=message; }
+    public void Save(ProviderView edited, string section)
     {
         var index = Providers.FindIndex(p => p.Id == edited.Id);
+        if (index < 0) throw new InvalidOperationException("Provider is not present in the loaded demo snapshot.");
         Providers[index] = edited.Copy();
-        History.Insert(0, (edited.Id, DateTimeOffset.UtcNow, "Información actualizada", $"{edited.Name} · Cambio simulado en memoria"));
+        if (section == "operacion")
+            History.Insert(0, (edited.Id, edited.ConfirmedAt ?? DateTimeOffset.UtcNow, "Operación confirmada", $"{edited.Name} · Fuente: proveedor del demo"));
     }
     public static string Label(string value) => value switch
     {

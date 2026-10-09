@@ -19,8 +19,21 @@
 @inject DemoStore Store
 @inject NavigationManager Nav
 @inject ISnackbar Snackbar
+@inject AppwritePortalApi Api
 @implements IDisposable
 <PageTitle>@Title · Pulso PR</PageTitle>
+<span class="connection-state" data-demo-state="@(Store.IsLoading ? "loading" : Store.IsConnected ? "connected" : "disconnected")" hidden></span>
+@if (Store.IsLoading)
+{
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="connection-alert">Conectando con el demo sintético…</MudAlert>
+}
+else if (Store.LoadError is not null)
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="connection-alert">
+        Los datos que ves son una vista local de demostración. No se pudo conectar con Appwrite, y los cambios no se guardan mientras la conexión no esté disponible.
+        <MudButton Size="Size.Small" OnClick="RefreshRemoteData">Intentar de nuevo</MudButton>
+    </MudAlert>
+}
 <div class="page-heading">
 <div>
 <div class="eyebrow">@Category</div>
@@ -168,7 +181,7 @@ else
 <h2>Un perfil que orienta</h2>
 <p>Personas, organizaciones y centros comunitarios comparten este portal.</p>
 <p>La dirección y el horario son opcionales. Publica sólo información de contacto adecuada para compartir.</p>
-<div class="note-box">Los cambios de revisión se guardan sólo en memoria y desaparecen al recargar.</div>
+<div class="note-box">Este perfil se comparte con el demo sintético. Publica sólo información apropiada para compartir.</div>
 </MudPaper>
 </div>
     }
@@ -270,7 +283,7 @@ else
                 <MudDivider />
 <h3>Responder a la solicitud</h3>
 <MudForm @key="Path" @ref="form" ValidationDelay="0">
-<MudTextField Immediate="true" Label="Mensaje al solicitante" @bind-Value="response" Lines="3" MaxLength="500" Required="true" RequiredError="Escribe una respuesta breve para continuar." Variant="Variant.Outlined" HelperText="Sin diagnósticos ni información personal. Respuesta simulada." />
+<MudTextField Immediate="true" Label="Mensaje al solicitante" @bind-Value="response" Lines="3" MaxLength="500" Required="true" RequiredError="Escribe una respuesta breve para continuar." Variant="Variant.Outlined" HelperText="Es una respuesta ficticia del demo; no se envía a una persona real." />
 <div class="form-actions">@if(request.Status=="submitted") { <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(Estado=="conflicto")" OnClick='()=>Respond("acknowledged")'>Marcar como recibida</MudButton> } else if(request.Status=="acknowledged") { <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(Estado=="conflicto")" OnClick='()=>Respond("confirmed")'>Confirmar coordinación</MudButton>
 <MudButton Color="Color.Error" Variant="Variant.Outlined" Disabled="@(Estado=="conflicto")" OnClick='()=>Respond("declined")'>No podemos atender</MudButton> } else if(request.Status=="confirmed") { <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(Estado=="conflicto")" OnClick='()=>Respond("completed")'>Completar coordinación</MudButton> }</div>
 </MudForm>
@@ -283,13 +296,13 @@ else
 <li>
 <strong>Enviada</strong>
 <small>@DemoStore.LocalTime(request.CreatedAt)</small>
-<p>Solicitud creada en la fixture visual.</p>
+<p>Solicitud creada en el demo sintético.</p>
 </li>@foreach(var e in request.Events) { <li>
 <strong>@DemoStore.Label(e.State)</strong>
 <small>@DemoStore.LocalTime(e.Time)</small>
 <p>@e.Note</p>
 </li> }</ol>
-<p class="footnote">Historial simulado para revisar el flujo. No acredita entrega ni autoría.</p>
+<p class="footnote">Historial sintético para la demostración; no acredita entrega ni autoría.</p>
 </MudPaper>
 </div>
         }
@@ -330,7 +343,7 @@ else
     }
     else if (Path.StartsWith("catalogo/"))
     {
-        @if(Store.Providers.FirstOrDefault(p=>p.Id==Id) is not {} provider) { <MudAlert Severity="Severity.Warning">Proveedor no encontrado.</MudAlert>
+        @if(CatalogProvider is not {} provider) { <MudAlert Severity="Severity.Warning">Proveedor no encontrado.</MudAlert>
 <MudButton Href="/catalogo">Volver al directorio</MudButton> }
         else
         {
@@ -395,7 +408,7 @@ else
 <div class="stat-card">
 <span>Municipios representados</span>
 <strong>@Store.Providers.Select(p=>p.Municipality).Distinct().Count()</strong>
-<small>En la fixture de revisión</small>
+<small>En los datos sintéticos</small>
 </div>
 <div class="stat-card">
 <span>Solicitudes pendientes</span>
@@ -478,7 +491,8 @@ else
     private IEnumerable<RequestView> ProviderRequests => Store.Requests.Where(r=>r.FacilityId==Store.SelectedId);
     private IEnumerable<ProviderView> FilteredProviders => Store.Providers.Where(p=>(municipalityFilter=="todos" || p.Municipality==municipalityFilter) && (typeFilter=="todos" || p.ProviderType==typeFilter) && p.Name.Contains(search,StringComparison.OrdinalIgnoreCase));
     private IEnumerable<RequestView> FilteredRequests => (IsAdmin ? Store.Requests.Where(r=>r.Status is "submitted" or "acknowledged") : ProviderRequests).Where(r=>(requestFilter=="todos" || r.Status==requestFilter) && (r.Id+" "+r.Description).Contains(search,StringComparison.OrdinalIgnoreCase));
-    private RequestView? CurrentRequest => (IsAdmin ? Store.Requests : ProviderRequests).FirstOrDefault(r=>r.Id==Id);
+    private RequestView? CurrentRequest => (IsAdmin ? Store.Requests : ProviderRequests).FirstOrDefault(r=>r.Id==Id) ?? (Id=="DEMO-001" ? (IsAdmin ? Store.Requests : ProviderRequests).FirstOrDefault() : null);
+    private ProviderView? CatalogProvider => Store.Providers.FirstOrDefault(p=>p.Id==Id) ?? (Id=="demo-farmacia" ? Store.Providers.FirstOrDefault(p=>p.Id=="hackathon-demo-pharmacy") : null);
     private string Title => Path switch { "acceso"=>"Bienvenido a Pulso PR", "seleccionar"=>"Elige tu espacio de ayuda", "proveedor/perfil"=>"Perfil y horario", "proveedor/operacion"=>"Operación y confirmación", "proveedor/servicios"=>"Servicios que ofreces", "proveedor/recursos"=>"Disponibilidad de recursos", "proveedor/solicitudes"=>"Bandeja de solicitudes", "proveedor/historia"=>"Historia de actividad", "catalogo"=>"Directorio de ayuda", "admin"=>"Panorama territorial", "admin/proveedores"=>"Red de proveedores", "admin/pendientes"=>"Solicitudes pendientes", "admin/indicadores"=>"Indicadores de la demo", _ when Path.Contains("/solicitudes/")=>"Detalle de solicitud", _ when Path.StartsWith("catalogo/")=>"Detalle del proveedor", _=>"Hola, qué bueno tenerte aquí." };
     private string Category => IsAdmin ? "ADMINISTRACIÓN · DEMOSTRACIÓN" : Path.StartsWith("catalogo") ? "NUESTRA COMUNIDAD" : "PROVEEDOR · DEMOSTRACIÓN";
     private string Subtitle => Path switch { "admin"=>"Una visión de la ayuda disponible y las necesidades por coordinar.", "catalogo" or "admin/proveedores"=>"Personas, organizaciones y centros comunitarios que conectan ayuda.", "proveedor/solicitudes" or "admin/pendientes"=>"Revisa necesidades no urgentes y coordina el siguiente paso.", _=>"Información clara para una comunidad mejor conectada." };
@@ -486,6 +500,13 @@ else
     private string StateDescription => Estado switch { "error"=>"Revisa la conexión y vuelve a intentar. No se guardaron cambios.", "sin-acceso"=>"Solicita una asignación al responsable del portal. Este estado es simulado.", "sesion"=>"Vuelve al acceso demo para continuar. No se muestran datos en este estado.", _=>"Cuando haya información para esta vista, la encontrarás aquí." };
     private string StateIcon => Estado switch { "error"=>Icons.Material.Outlined.CloudOff, "sin-acceso"=>Icons.Material.Outlined.Lock, "sesion"=>Icons.Material.Outlined.Login, _=>Icons.Material.Outlined.Inbox };
     protected override void OnInitialized() => Nav.LocationChanged += LocationChanged;
+    protected override async Task OnAfterRenderAsync(bool firstRender) { if (firstRender) await RefreshRemoteData(); }
+    private async Task RefreshRemoteData()
+    {
+        Store.SetLoading(); await InvokeAsync(StateHasChanged);
+        try { Store.Load(await Api.LoadDemoDataAsync()); LoadView(); await InvokeAsync(StateHasChanged); }
+        catch { Store.SetLoadError("Appwrite no está disponible"); await InvokeAsync(StateHasChanged); }
+    }
     protected override void OnParametersSet() => LoadView();
     private void LoadView() { if(lastPath!=Path) { search=""; municipalityFilter=typeFilter=requestFilter="todos"; lastPath=Path; } edited=Store.Selected.Copy(); response=""; confirmOperation=false; if(IsAdmin) Store.Role="admin"; else if(Path.StartsWith("proveedor")) Store.Role="proveedor"; }
     // Multiple routes share this component. Exact paths can change without any
@@ -499,8 +520,40 @@ else
     private void CancelEdit() { edited=Store.Selected.Copy(); confirmOperation=false; Snackbar.Add("Cambios descartados.",Severity.Info); }
     private void SetAvailability(string value) { if(Path.EndsWith("servicios")) edited.ServiceAvailability=value; else edited.ResourceAvailability=value; }
     private void SetAvailabilityNote(string value) { if(Path.EndsWith("servicios")) edited.ServiceNote=value; else edited.ResourceNote=value; }
-    private async Task SaveProvider() { if(Estado=="conflicto") return; if(form is not null) { await form.ValidateAsync(); if(!form.IsValid) return; } Store.Save(edited); Snackbar.Add("Cambio simulado guardado en memoria. Sin publicación real.",Severity.Success); }
+    private async Task SaveProvider()
+    {
+        if(Estado=="conflicto") return;
+        if(form is not null) { await form.ValidateAsync(); if(!form.IsValid) return; }
+        if(!Store.IsConnected) { Snackbar.Add("No se guardó el cambio porque Appwrite no está conectado.",Severity.Warning); return; }
+        var section=Path.EndsWith("/perfil") ? "perfil" : Path.EndsWith("/operacion") ? "operacion" : Path.EndsWith("/servicios") ? "servicios" : "recursos";
+        try
+        {
+            await Api.SaveProviderAsync(edited,section);
+            Store.Save(edited,section);
+            Snackbar.Add("Cambio guardado en el demo sintético.",Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add(section=="operacion" ? "No se completó la confirmación. Revisa el estado y su historial antes de volver a publicar." : "No se pudo guardar. No se actualizó la vista local.",Severity.Error);
+        }
+    }
     private async Task ConfirmOperation() { if(!confirmOperation) return; if(!string.IsNullOrEmpty(edited.InterruptionEnd) && (string.IsNullOrEmpty(edited.InterruptionStart) || string.CompareOrdinal(edited.InterruptionEnd,edited.InterruptionStart)<0)) { Snackbar.Add("Revisa el inicio y fin de la interrupción.",Severity.Warning); return; } edited.ConfirmedAt=DateTimeOffset.UtcNow; edited.Source="FacilityConfirmed"; await SaveProvider(); }
-    private async Task Respond(string status) { if(Estado=="conflicto" || IsAdmin || CurrentRequest is not {} request) return; if(form is not null) { await form.ValidateAsync(); if(!form.IsValid) return; } if(string.IsNullOrWhiteSpace(response)) return; var allowed=request.Status switch { "submitted"=>status=="acknowledged", "acknowledged"=>status is "confirmed" or "declined", "confirmed"=>status=="completed", _=>false }; if(!allowed) return; request.Status=status; request.Events.Add((status,DateTimeOffset.UtcNow,response.Trim())); response=""; Snackbar.Add("Respuesta simulada. No se envió a ningún ciudadano.",Severity.Success); }
+    private async Task Respond(string status)
+    {
+        if(Estado=="conflicto" || IsAdmin || CurrentRequest is not {} request) return;
+        if(form is not null) { await form.ValidateAsync(); if(!form.IsValid) return; }
+        if(string.IsNullOrWhiteSpace(response)) return;
+        if(!Store.IsConnected) { Snackbar.Add("No se envió la respuesta porque Appwrite no está conectado.",Severity.Warning); return; }
+        var allowed=request.Status switch { "submitted"=>status=="acknowledged", "acknowledged"=>status is "confirmed" or "declined", "confirmed"=>status=="completed", _=>false };
+        if(!allowed) return;
+        var note=response.Trim();
+        try
+        {
+            await Api.RespondToRequestAsync(request.Id,status,note);
+            request.Status=status; request.Events.Add((status,DateTimeOffset.UtcNow,note)); response="";
+            Snackbar.Add("Respuesta guardada en el demo sintético.",Severity.Success);
+        }
+        catch { Snackbar.Add("La actualización o su evento no se completaron. Refresca la solicitud antes de volver a responder.",Severity.Error); }
+    }
     private static string Optional(string value) => string.IsNullOrWhiteSpace(value) ? "No reportado" : value;
 }

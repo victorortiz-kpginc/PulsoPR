@@ -1,30 +1,27 @@
 # Pulso PR web
 
-Portal Blazor WebAssembly standalone, .NET SDK 10.0.401, MudBlazor 9.11.0 y SDK JavaScript Appwrite 26.2.0. No servidor de reglas de negocio ni credenciales administrativas.
+Portal web MVP standalone Blazor WebAssembly .NET 10, MudBlazor 9.11.0, Appwrite Web SDK 26.2.0. The browser SDK bridge reads and writes only the public synthetic hackathon dataset defined by `docs/backend/HACKATHON-MVP.md`. No API key or server runtime is bundled. Direct demo writes and request history are separate, non-atomic Appwrite operations; roles remain a UI simulation and are not security controls.
 
-Desde `web/` en este entorno cloud:
+From `web/` in this environment:
 
 ```bash
 source scripts/env.sh
-npm ci
+npm ci --ignore-scripts --no-audit --no-fund
 npm run build:sdk
+npm run test:api
 dotnet restore --locked-mode
 dotnet build --no-restore
 dotnet run --no-build --no-launch-profile --urls http://localhost:5180
 ```
 
-En otros hosts instalar .NET 10.0.401 y Node 24; configurar caches en el área web. El build necesita el bundle local `wwwroot/js/appwrite-sdk.js`, generado con npm, sin CDN en runtime.
+The generated local SDK bundle stays under `wwwroot/`; runtime loads public endpoint, project and database IDs from `wwwroot/appsettings.json`. Do not add keys or credentials to browser config.
 
-## UI v1 en revisión
+## Browser validation
 
-Abrir `/proveedor`. Las pantallas MVP de proveedor, catálogo y administración usan datos sintéticos en memoria. El acceso demo selecciona una experiencia; no autentica ni concede permisos. El botón superior cambia de experiencia. Los cambios y respuestas son simulados y desaparecen al recargar.
+`node scripts/ui-smoke.cjs` uses the committed synthetic seed as an intercepted Appwrite contract stub. It checks WASM screens at desktop/mobile sizes, search, error states, profile validation/update, the request-response path and admin read-only presentation. It never contacts or mutates the remote project. `UI_INTERACTIONS_ONLY=1` limits the run to the behavioral checks. The SDK adapter also has focused Node tests in `tests/mvp-api.test.mjs`.
 
-Inventario, estados y recorrido: `../docs/web/UI-REVIEW.md`. No integrar Appwrite ni avanzar S05 hasta aprobación explícita y capturas en capture/web/. Sólo entonces se cierra S04. No se ha desplegado el portal.
+The UI-APPROVAL capture and gallery are at `../capture/web/index.md`; 33 post-approval PNGs are linked in its manifest. The full roster and gate evidence are in `../docs/web/UI-REVIEW.md` and `../docs/web/PROGRESS.md`.
 
-Desde web/, smoke con el Playwright del runtime cloud y `/usr/bin/chromium`:
+## Demo-only limits
 
-```bash
-node scripts/ui-smoke.cjs
-```
-
-`CHROMIUM_PATH` y `WEB_BASE_URL` permiten otros hosts. El smoke ejecuta WASM real, verifica pantallas escritorio/móvil, navegación, filtros, validación, estados y transiciones simuladas; los resultados locales quedan en `.evidence/`. No toma capturas antes de aprobación. Reiniciar el servidor después de un build que cambie sus manifests/artefactos.
+Appwrite schema, collection ACLs and synthetic fixture setup remain backend-owned. This client trusts the demo's open collection ACLs, uses synthetic actor IDs, and does not make profile/status/history writes transactional. The project's public domain egress has been drafted in cloud environment settings but must be reviewed and published before live-runtime reads/writes can be validated. No site was deployed.

@@ -13,7 +13,7 @@
 <strong>@context.Id</strong>
 <small class="table-description">@context.Description</small>
 </MudTd>
-        <MudTd DataLabel="Proveedor">@Store.Providers.Single(p=>p.Id==context.FacilityId).Name</MudTd>
+        <MudTd DataLabel="Proveedor">@(Store.Providers.FirstOrDefault(p=>p.Id==context.FacilityId)?.Name ?? "Proveedor de demo")</MudTd>
         <MudTd DataLabel="Recibida">@DemoStore.LocalTime(context.CreatedAt)</MudTd>
         <MudTd DataLabel="Estado">
 <StatusPill Value="@context.Status" />

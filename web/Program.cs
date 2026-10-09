@@ -8,4 +8,5 @@ builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 builder.Services.AddMudServices();
 builder.Services.AddScoped<PulsoPR.Web.Models.DemoStore>();
+builder.Services.AddScoped<PulsoPR.Web.Models.AppwritePortalApi>();
 await builder.Build().RunAsync();
