@@ -1,0 +1,6 @@
+bin/
+obj/
+node_modules/
+.cache/
+.evidence/
+wwwroot/js/appwrite-sdk.js

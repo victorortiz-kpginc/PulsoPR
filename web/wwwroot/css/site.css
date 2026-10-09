@@ -1,0 +1,4 @@
+html,body { margin:0; font-family:Arial,sans-serif; }
+main { padding:32px; }
+.boot { padding:40px; }
+#blazor-error-ui { background:#fee; padding:16px; position:fixed; bottom:0; width:100%; z-index:2000; }
