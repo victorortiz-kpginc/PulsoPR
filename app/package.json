@@ -28,6 +28,10 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "smoke:sdk": "node scripts/sdk-smoke.mjs",
-    "smoke:mvp-cloud": "node scripts/mvp-cloud-smoke.mjs"
+    "smoke:mvp-cloud": "node scripts/mvp-cloud-smoke.mjs",
+    "test:access": "node --test scripts/public-access-smoke.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
   }
 }

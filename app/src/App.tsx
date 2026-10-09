@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { IonApp, IonButton, IonContent, IonInput, IonItem, IonLabel, IonPage, IonSelect, IonSelectOption, IonTextarea, IonToast } from '@ionic/react';
 import { BrowserRouter, Link, Navigate, Outlet, Route, Routes, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { kindText, providers, sampleEvents, sampleRequest, type PreviewProvider, type ProviderKind } from './preview/fixtures';
@@ -55,11 +55,36 @@ function AppRoutes() {
   const [localStateIds, setLocalStateIds] = useState<string[]>([]);
   const [dataSource, setDataSource] = useState<DataSource>('loading');
   const [requestText, setRequestText] = useState('');
-  useEffect(() => { let mounted = true; void currentAccount().then(value => { if (mounted) { setUser(value); setAuthLoading(false); } }); return () => { mounted = false; }; }, []);
+  const sessionVersion = useRef(0);
+  const clearPrivateState = useCallback(() => {
+    setRequestRows([]); setRequestEvents([]); setActiveRequest(sampleRequest); setLocalStateIds([]); setRequestText('');
+  }, []);
+  useEffect(() => {
+    let mounted = true;
+    const check = async () => {
+      const version = ++sessionVersion.current;
+      const value = await currentAccount();
+      if (!mounted || version !== sessionVersion.current) return;
+      setUser(value); setAuthLoading(false);
+      if (!value) clearPrivateState();
+    };
+    void check();
+    const onFocus = () => { if (document.visibilityState === 'visible') void check(); };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    const timer = window.setInterval(onFocus, 60_000);
+    return () => { mounted = false; ++sessionVersion.current; window.clearInterval(timer); window.removeEventListener('focus', onFocus); document.removeEventListener('visibilitychange', onFocus); };
+  }, [clearPrivateState]);
   const authenticate = async (email: string, password: string) => {
-    const account = await signIn(email, password); setUser(account); navigate('/');
+    ++sessionVersion.current;
+    const account = await signIn(email, password); setUser(account); setAuthLoading(false);
+    const destination = new URLSearchParams(window.location.search).get('returnTo') ?? '/';
+    navigate(destination === '/solicitudes' || /^\/(solicitud|seguimiento)\/[A-Za-z0-9._-]+$/.test(destination) ? destination : '/', { replace: true });
   };
-  const logout = async () => { await signOut(); setUser(null); navigate('/acceso'); };
+  const logout = async () => {
+    ++sessionVersion.current; setUser(null); setAuthLoading(false); clearPrivateState(); navigate('/');
+    try { await signOut(); } catch { setToast('No se pudo cerrar la sesión en el servidor. Vuelve a iniciar sesión y reintenta el cierre.'); }
+  };
   const notify = (message: string) => setToast(message);
   useEffect(() => {
     let mounted = true;
@@ -67,9 +92,11 @@ function AppRoutes() {
     return () => { mounted = false; };
   }, []);
   const refreshRequests = useCallback(async () => {
+    const version = sessionVersion.current;
     try {
       if (!user) return;
       const rows = await listCitizenRequests(user.$id);
+      if (version !== sessionVersion.current) return;
       const storedIds = new Set(rows.map(row => row.$id));
       setRequestRows(current => [...rows, ...current.filter(row => !storedIds.has(row.$id))]);
       setLocalStateIds(current => current.filter(id => !storedIds.has(id)));
@@ -77,9 +104,11 @@ function AppRoutes() {
     } catch { setDataSource('local'); }
   }, [user]);
   const refreshRequest = useCallback(async (requestId: string) => {
+    const version = sessionVersion.current;
     try {
       if (!user) return;
       const result = await getCitizenRequest(requestId, user.$id);
+      if (version !== sessionVersion.current) return;
       setActiveRequest(result.request);
       setRequestEvents(result.events);
       setRequestRows(current => [result.request, ...current.filter(row => row.$id !== requestId)]);
@@ -88,17 +117,20 @@ function AppRoutes() {
     } catch { setDataSource('local'); /* Keep the already labeled local/synthetic fallback. */ }
   }, [user]);
   const submitRequest = async (provider: PreviewProvider, description: string, requestId: string, eventId: string) => {
+    const version = sessionVersion.current;
     let request: AssistanceRequest;
     let event: RequestEvent;
     let storedRemotely = false;
     try {
       if (!user) throw new Error('AUTH_REQUIRED');
       request = await submitCitizenRequest({ facilityId: provider.facility.$id, municipalityId: provider.facility.municipalityId, serviceId: 'pharmacy', description, requestId, eventId, citizenId: user.$id });
+      if (version !== sessionVersion.current) throw new Error('SESSION_CHANGED');
       storedRemotely = true;
       event = { $id: eventId, requestId, eventType: 'submitted', actorId: user?.$id ?? '', occurredAt: new Date().toISOString() };
       setDataSource('appwrite');
       notify('Solicitud guardada.');
     } catch {
+      if (version !== sessionVersion.current) throw new Error('SESSION_CHANGED');
       if (!user) throw new Error('AUTH_REQUIRED');
       setDataSource('local');
       notify('No se pudo guardar la solicitud. Revisa tu conexión e inténtalo de nuevo.');
@@ -112,11 +144,11 @@ function AppRoutes() {
   };
   const data: AppDemoState = { user, authLoading, authenticate, logout, providerRows, setProviderRows, municipalityRows, requestRows, activeRequest, requestEvents, localStateIds, dataSource, setDataSource, submitRequest, refreshRequest, refreshRequests };
   return <AppDemoContext.Provider value={data}><><Routes>
-    <Route element={<RequireCitizen />}>
     <Route path="/" element={<Home />} />
     <Route path="/resultados" element={<Results />} />
     <Route path="/mapa" element={<Shell title="Mapa comunitario" back><GeographicMap /></Shell>} />
     <Route path="/proveedor/:id" element={<ProviderDetail onRequest={() => notify('No se pudo iniciar esta solicitud. Inténtalo de nuevo.')} />} />
+    <Route element={<RequireCitizen />}>
     <Route path="/solicitud/:id" element={<NewRequest text={requestText} setText={setRequestText} onSubmit={submitRequest} />} />
     <Route path="/solicitudes" element={<Requests />} />
     <Route path="/seguimiento/:id" element={<Tracking />} />
