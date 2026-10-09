@@ -18,6 +18,7 @@ function ready() {
   return api;
 }
 export const loadDemoData = (session) => ready().loadDemoData(session);
+export const createProvider = (provider) => ready().createProvider(provider);
 export const saveProvider = (provider, section) => ready().saveProvider(provider, section);
 export const respondToRequest = (id, status, note, actorId) => ready().respondToRequest(id, status, note, actorId);
 export const loadGeographicMap = (options) => ready().loadGeographicMap(options);

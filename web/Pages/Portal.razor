@@ -14,6 +14,8 @@
 @page "/catalogo/{Id}"
 @page "/admin"
 @page "/admin/proveedores"
+@page "/admin/proveedores/nuevo"
+@page "/admin/proveedores/{Id}/editar"
 @page "/admin/pendientes"
 @page "/admin/solicitudes/{Id}"
 @page "/admin/indicadores"
@@ -45,6 +47,7 @@ else if (!IsAccessPage && Store.LoadError is not null)
 <p>@Subtitle</p>
 </div>
 @if (Path.StartsWith("proveedor")) { <MudButton Href="/seleccionar" Variant="Variant.Outlined" StartIcon="@Icons.Material.Outlined.SwapHoriz">@Store.Selected.Name</MudButton> }
+@if (Path == "admin/proveedores") { <MudButton Href="/admin/proveedores/nuevo" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.PersonAdd">Añadir proveedor</MudButton> }
 </div>
 }
 @if (Estado is "carga")
@@ -361,6 +364,24 @@ else
 <MudAlert Severity="Severity.Info">La historia refleja la actividad reportada para este proveedor.</MudAlert>
 </MudPaper>
     }
+    else if (Path == "admin/proveedores/nuevo" || Path.EndsWith("/editar", StringComparison.Ordinal))
+    {
+        <MudPaper Class="panel form-panel" Elevation="0">
+            <div class="section-heading"><div><span class="eyebrow">DIRECTORIO ADMINISTRATIVO</span><h2>@(Path.EndsWith("/editar", StringComparison.Ordinal) ? "Editar proveedor" : "Añadir proveedor")</h2></div><MudButton Href="/admin/proveedores" Variant="Variant.Outlined" StartIcon="@Icons.Material.Outlined.ArrowBack">Volver a proveedores</MudButton></div>
+            <MudAlert Severity="Severity.Info" Class="my-4">Registra información pública del proveedor. La cuenta de acceso de su equipo se asigna por separado.</MudAlert>
+            <MudForm @ref="providerForm" Class="form-grid">
+                <MudTextField T="string" Label="Nombre del proveedor" @bind-Value="providerDraft.Name" Required="true" RequiredError="Escribe el nombre." Variant="Variant.Outlined" />
+                <MudSelect T="string" Label="Tipo de proveedor" @bind-Value="providerDraft.ProviderType" Variant="Variant.Outlined"><MudSelectItem Value="@types[0]">Persona</MudSelectItem><MudSelectItem Value="@types[1]">Organización</MudSelectItem><MudSelectItem Value="@types[2]">Centro comunitario</MudSelectItem></MudSelect>
+                <MudSelect T="string" Label="Municipio" @bind-Value="providerDraft.Municipality" Required="true" RequiredError="Selecciona un municipio." Variant="Variant.Outlined">@foreach (var municipality in municipalities) { <MudSelectItem Value="@municipality">@municipality</MudSelectItem> }</MudSelect>
+                <MudTextField T="string" Label="Teléfono de contacto (opcional)" @bind-Value="providerDraft.Phone" InputType="InputType.Telephone" Variant="Variant.Outlined" />
+                <MudTextField T="string" Label="Dirección (opcional)" @bind-Value="providerDraft.Address" Variant="Variant.Outlined" />
+                <MudTextField T="string" Label="Horario (opcional)" @bind-Value="providerDraft.Hours" Variant="Variant.Outlined" />
+                <MudTextField T="string" Label="Nota inicial (opcional)" @bind-Value="providerDraft.Note" Lines="3" Variant="Variant.Outlined" Class="form-span" />
+            </MudForm>
+            @if (providerSavedPreview) { <MudAlert Severity="Severity.Success" Class="mt-4">@(Path.EndsWith("/editar", StringComparison.Ordinal) ? "Cambios guardados en el directorio." : "Proveedor agregado al directorio.")</MudAlert> }
+            <div class="form-actions"><MudButton Href="/admin/proveedores" Variant="Variant.Text">Volver a proveedores</MudButton><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAdministrativeProviderAsync" Disabled="@providerSaveBusy">@(providerSaveBusy ? "Guardando…" : Path.EndsWith("/editar", StringComparison.Ordinal) ? "Guardar cambios" : providerSavedPreview ? "Proveedor agregado" : "Añadir proveedor")</MudButton></div>
+        </MudPaper>
+    }
     else if (Path is "catalogo" or "admin/proveedores")
     {
         <MudPaper Class="panel filter-panel" Elevation="0">
@@ -375,9 +396,13 @@ else
         <div class="section-heading">
 <p>
 <strong>@FilteredProviders.Count()</strong> proveedores encontrados</p>
-<MudButton OnClick="ClearFilters" Size="Size.Small">Limpiar filtros</MudButton>
+<div class="section-actions"><MudButton OnClick="ClearFilters" Size="Size.Small">Limpiar filtros</MudButton>@if (Path == "admin/proveedores") { <MudButton Href="/admin/proveedores/nuevo" Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Outlined.PersonAdd">Añadir proveedor</MudButton> }</div>
 </div>
-        @if(FilteredProviders.Any()) { <ProviderList Providers="@FilteredProviders" /> } else { <MudPaper Class="state-panel" Elevation="0">
+        @if (Path == "admin/proveedores" && FilteredProviders.Any())
+        {
+            <div class="provider-grid">@foreach (var provider in FilteredProviders) { <MudPaper Class="provider-card admin-provider-card" Elevation="0" Outlined="true"><span class="provider-icon"><MudIcon Icon="@Icons.Material.Outlined.Storefront" /></span><div class="provider-copy"><div class="eyebrow">@DemoStore.Label(provider.ProviderType)</div><h2>@provider.Name</h2><p>@provider.Municipality · @Optional(provider.Phone)</p><StatusPill Value="@provider.State" /></div><MudButton Href="@($"/admin/proveedores/{provider.Id}/editar")" Variant="Variant.Outlined" StartIcon="@Icons.Material.Outlined.Edit">Editar</MudButton></MudPaper>}</div>
+        }
+        else if(FilteredProviders.Any()) { <ProviderList Providers="@FilteredProviders" /> } else { <MudPaper Class="state-panel" Elevation="0">
 <h2>No encontramos proveedores</h2>
 <p>Prueba otro municipio, tipo o nombre.</p>
 <MudButton OnClick="ClearFilters">Limpiar filtros</MudButton>
@@ -527,25 +552,29 @@ else
     private bool IsAdmin => Path.StartsWith("admin");
     private bool IsAccessPage => Path is "acceso" or "recuperacion";
     private ProviderView edited = new();
+    private ProviderView providerDraft = new();
     private string lastPath = "";
     private MudForm? form;
     private MudForm? accessForm;
     private MudForm? recoveryForm;
+    private MudForm? providerForm;
     private string accessError="";
     private bool recoveryNotice;
     private bool authBusy;
+    private bool providerSavedPreview;
+    private bool providerSaveBusy;
     private string loginEmail="", loginPassword="", recoveryEmail="", recoveryPassword="", recoveryError="";
     private string search="", municipalityFilter="todos", typeFilter="todos", requestFilter="todos", response="";
     private bool confirmOperation;
-    private readonly string[] types=["person","organization","community_center"], municipalities=["San Juan","Ponce","Mayagüez"], operationStates=["operational","limited","unavailable","unknown"], utilityStates=["available","unavailable","unknown"], availabilityStates=["available","limited","unavailable","unknown"], requestStates=["submitted","acknowledged","confirmed","declined","completed","cancelled"];
+    private readonly string[] types=["person","organization","community_center"], municipalities=["Adjuntas","San Juan","Ponce","Mayagüez"], operationStates=["operational","limited","unavailable","unknown"], utilityStates=["available","unavailable","unknown"], availabilityStates=["available","limited","unavailable","unknown"], requestStates=["submitted","acknowledged","confirmed","declined","completed","cancelled"];
     private IEnumerable<RequestView> ProviderRequests => Store.Requests.Where(r=>r.FacilityId==Store.SelectedId);
     private IEnumerable<ProviderView> FilteredProviders => Store.Providers.Where(p=>(municipalityFilter=="todos" || p.Municipality==municipalityFilter) && (typeFilter=="todos" || p.ProviderType==typeFilter) && p.Name.Contains(search,StringComparison.OrdinalIgnoreCase));
     private IEnumerable<RequestView> FilteredRequests => (IsAdmin ? Store.Requests.Where(r=>r.Status is "submitted" or "acknowledged").OrderByDescending(r=>r.CreatedAt) : ProviderRequests.OrderByDescending(r=>r.CreatedAt)).Where(r=>(requestFilter=="todos" || r.Status==requestFilter) && (r.Id+" "+r.Description).Contains(search,StringComparison.OrdinalIgnoreCase));
     private RequestView? CurrentRequest => (IsAdmin ? Store.Requests : ProviderRequests).FirstOrDefault(r=>r.Id==Id) ?? (Id=="DEMO-001" ? (IsAdmin ? Store.Requests : ProviderRequests).FirstOrDefault() : null);
     private ProviderView? CatalogProvider => Store.Providers.FirstOrDefault(p=>p.Id==Id) ?? (Id=="demo-farmacia" ? Store.Providers.FirstOrDefault(p=>p.Id=="hackathon-demo-pharmacy") : null);
-    private string Title => Path switch { "acceso"=>"Bienvenido a Pulso PR", "recuperacion"=>"Recuperar acceso", "seleccionar"=>"Elige tu espacio de ayuda", "proveedor/perfil"=>"Perfil y horario", "proveedor/operacion"=>"Operación y confirmación", "proveedor/servicios"=>"Servicios que ofreces", "proveedor/recursos"=>"Disponibilidad de recursos", "proveedor/solicitudes"=>"Bandeja de solicitudes", "proveedor/historia"=>"Historia de actividad", "catalogo"=>"Directorio de ayuda", "admin"=>"Panorama territorial", "admin/proveedores"=>"Red de proveedores", "admin/pendientes"=>"Solicitudes pendientes", "admin/indicadores"=>"Indicadores", _ when Path.Contains("/solicitudes/")=>"Detalle de solicitud", _ when Path.StartsWith("catalogo/")=>"Detalle del proveedor", _=>"Hola, qué bueno tenerte aquí." };
+    private string Title => Path switch { "acceso"=>"Bienvenido a Pulso PR", "recuperacion"=>"Recuperar acceso", "seleccionar"=>"Elige tu espacio de ayuda", "proveedor/perfil"=>"Perfil y horario", "proveedor/operacion"=>"Operación y confirmación", "proveedor/servicios"=>"Servicios que ofreces", "proveedor/recursos"=>"Disponibilidad de recursos", "proveedor/solicitudes"=>"Bandeja de solicitudes", "proveedor/historia"=>"Historia de actividad", "catalogo"=>"Directorio de ayuda", "admin"=>"Panorama territorial", "admin/proveedores"=>"Red de proveedores", "admin/proveedores/nuevo"=>"Añadir proveedor", _ when Path.StartsWith("admin/proveedores/")=>"Editar proveedor", "admin/pendientes"=>"Solicitudes pendientes", "admin/indicadores"=>"Indicadores", _ when Path.Contains("/solicitudes/")=>"Detalle de solicitud", _ when Path.StartsWith("catalogo/")=>"Detalle del proveedor", _=>"Hola, qué bueno tenerte aquí." };
     private string Category => IsAdmin ? "ADMINISTRACIÓN · PUERTO RICO" : Path.StartsWith("catalogo") ? "NUESTRA COMUNIDAD" : "PROVEEDOR · PUERTO RICO";
-    private string Subtitle => Path switch { "admin"=>"Una visión de la ayuda disponible y las necesidades por coordinar.", "catalogo" or "admin/proveedores"=>"Personas, organizaciones y centros comunitarios que conectan ayuda.", "proveedor/solicitudes" or "admin/pendientes"=>"Revisa necesidades no urgentes y coordina el siguiente paso.", _=>"Información clara para una comunidad mejor conectada." };
+    private string Subtitle => Path switch { "admin"=>"Una visión de la ayuda disponible y las necesidades por coordinar.", "catalogo" or "admin/proveedores"=>"Personas, organizaciones y centros comunitarios que conectan ayuda.", "admin/proveedores/nuevo"=>"Incorpora un proveedor al directorio comunitario.", _ when Path.StartsWith("admin/proveedores/")=>"Actualiza la información visible del proveedor.", "proveedor/solicitudes" or "admin/pendientes"=>"Revisa necesidades no urgentes y coordina el siguiente paso.", _=>"Información clara para una comunidad mejor conectada." };
     private string StateTitle => Estado switch { "error"=>"No pudimos cargar la información", "sin-acceso"=>"No tienes un proveedor asignado", "sesion"=>"Tu sesión ha vencido", _=>"Todavía no hay información" };
     private string StateDescription => Estado switch { "error"=>"Revisa la conexión y vuelve a intentar. No se guardaron cambios.", "sin-acceso"=>"Solicita una asignación al responsable del portal.", "sesion"=>"Cambia de perfil para continuar.", _=>"Cuando haya información para esta vista, la encontrarás aquí." };
     private string StateIcon => Estado switch { "error"=>Icons.Material.Outlined.CloudOff, "sin-acceso"=>Icons.Material.Outlined.Lock, "sesion"=>Icons.Material.Outlined.Login, _=>Icons.Material.Outlined.Inbox };
@@ -569,7 +598,7 @@ else
         catch { Store.SetLoadError("Appwrite no está disponible"); await InvokeAsync(StateHasChanged); }
     }
     protected override void OnParametersSet() => LoadView();
-    private void LoadView() { if(lastPath!=Path) { search=""; municipalityFilter=typeFilter=requestFilter="todos"; lastPath=Path; } edited=Store.Selected.Copy(); response=""; confirmOperation=false; if(IsAdmin) Store.Role="admin"; else if(Path.StartsWith("proveedor")) Store.Role="proveedor"; }
+    private void LoadView() { if(lastPath!=Path) { search=""; municipalityFilter=typeFilter=requestFilter="todos"; lastPath=Path; providerSavedPreview=false; if (Path.EndsWith("/editar", StringComparison.Ordinal) && Id is not null) providerDraft=Store.Providers.FirstOrDefault(p=>p.Id==Id)?.Copy() ?? new(); else if (Path=="admin/proveedores/nuevo") providerDraft=new(); } if (Path.EndsWith("/editar", StringComparison.Ordinal) && Id is not null && Store.Providers.FirstOrDefault(p=>p.Id==Id) is { } provider) providerDraft=provider.Copy(); edited=Store.Selected.Copy(); response=""; confirmOperation=false; if(IsAdmin) Store.Role="admin"; else if(Path.StartsWith("proveedor")) Store.Role="proveedor"; }
     // Multiple routes share this component. Exact paths can change without any
     // route parameters changing, so navigation must explicitly refresh the view.
     private void LocationChanged(object? sender, LocationChangedEventArgs e) => _=InvokeAsync(() => { LoadView(); StateHasChanged(); });
@@ -633,6 +662,34 @@ else
     private void SelectProvider(string id) { Store.SelectedId=id; Store.Role="proveedor"; Nav.NavigateTo("/proveedor"); }
     private void ResetState() => Nav.NavigateTo(Estado=="sesion" ? "/acceso" : Nav.GetUriWithQueryParameter("estado",(string?)null));
     private void ClearFilters() { search=""; municipalityFilter=typeFilter="todos"; }
+    private async Task SaveAdministrativeProviderAsync()
+    {
+        if (providerSaveBusy || (providerSavedPreview && Path == "admin/proveedores/nuevo")) return;
+        if (providerForm is not null) { await providerForm.ValidateAsync(); if (!providerForm.IsValid) return; }
+        if (!Store.IsConnected) { Snackbar.Add("No se guardó el proveedor porque Appwrite no está conectado.", Severity.Warning); return; }
+        providerSaveBusy = true;
+        try
+        {
+            if (Path.EndsWith("/editar", StringComparison.Ordinal))
+            {
+                await Api.SaveProviderAsync(providerDraft, "perfil");
+                Store.Save(providerDraft, "perfil");
+            }
+            else
+            {
+                var created = await Api.CreateProviderAsync(providerDraft);
+                providerDraft = created;
+                Store.AddOrUpdateProvider(created);
+            }
+            providerSavedPreview = true;
+            Snackbar.Add(Path.EndsWith("/editar", StringComparison.Ordinal) ? "Proveedor actualizado." : "Proveedor agregado.", Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add("No se pudo guardar el proveedor. Revisa la conexión e inténtalo de nuevo.", Severity.Error);
+        }
+        finally { providerSaveBusy = false; }
+    }
     private void CancelEdit() { edited=Store.Selected.Copy(); confirmOperation=false; Snackbar.Add("Cambios descartados.",Severity.Info); }
     private void SetAvailability(string value) { if(Path.EndsWith("servicios")) edited.ServiceAvailability=value; else edited.ResourceAvailability=value; }
     private void SetAvailabilityNote(string value) { if(Path.EndsWith("servicios")) edited.ServiceNote=value; else edited.ResourceNote=value; }

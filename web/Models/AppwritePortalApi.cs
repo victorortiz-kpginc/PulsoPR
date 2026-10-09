@@ -55,6 +55,9 @@ public sealed class AppwritePortalApi(IJSRuntime js, IConfiguration configuratio
     public async Task CompleteRecoveryAsync(string userId, string secret, string password) =>
         await (await ModuleAsync()).InvokeVoidAsync("finishRecovery", userId, secret, password);
 
+    public async Task<ProviderView> CreateProviderAsync(ProviderView provider) =>
+        await (await ModuleAsync()).InvokeAsync<ProviderView>("createProvider", provider);
+
     public async Task SaveProviderAsync(ProviderView provider, string section) =>
         await (await ModuleAsync()).InvokeVoidAsync("saveProvider", provider, section);
 

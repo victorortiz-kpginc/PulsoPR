@@ -554,6 +554,26 @@ main {
   font-size:11px;
   margin-top:20px
 }
+.admin-provider-card {
+  display:flex;
+  align-items:center;
+  gap:14px
+}
+.provider-card .provider-copy {
+  flex:1;
+  min-width:0
+}
+.provider-card .provider-copy .eyebrow {
+  margin-top:8px
+}
+.section-actions {
+  display:flex;
+  align-items:center;
+  gap:8px
+}
+.form-span {
+  grid-column:1/-1
+}
 .card-top {
   display:flex;
   align-items:center;
@@ -1042,6 +1062,16 @@ h1:focus {
   }
   .provider-card {
     padding:22px
+  }
+  .provider-card .mud-button {
+    margin-top:8px
+  }
+  .admin-provider-card {
+    align-items:flex-start;
+    flex-wrap:wrap
+  }
+  .admin-provider-card .provider-copy {
+    flex-basis:calc(100% - 70px)
   }
   .form-actions {
     gap:8px

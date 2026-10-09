@@ -173,6 +173,22 @@ export function createMvpApi({ database, Query, ID, config, now = () => new Date
       };
     },
 
+    async createProvider(provider) {
+      const data = {
+        name: provider.name.trim(),
+        municipalityId: canonicalMunicipalityIds[provider.municipality] || municipalityIds[provider.municipality] || provider.municipality,
+        providerType: provider.providerType || 'organization',
+        phone: provider.phone || null,
+        address: provider.address || null,
+        hours: provider.hours || null,
+        teamId: null
+      };
+      const created = await database.createDocument({
+        ...ref(table.facilities, ID.unique()), permissions: [], data
+      });
+      return { ...provider, id: created.$id, state: 'unknown', confirmedAt: null, source: 'FacilityConfirmed' };
+    },
+
     async saveProvider(provider, section) {
       if (section === 'perfil') {
         const data = {

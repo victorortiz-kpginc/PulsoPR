@@ -99,6 +99,12 @@ public sealed class DemoStore
         if (section == "operacion")
             History.Insert(0, (edited.Id, edited.ConfirmedAt ?? DateTimeOffset.UtcNow, "Operación confirmada", $"{edited.Name} · Fuente: proveedor del demo"));
     }
+    public void AddOrUpdateProvider(ProviderView provider)
+    {
+        var index = Providers.FindIndex(p => p.Id == provider.Id);
+        if (index < 0) Providers.Insert(0, provider.Copy());
+        else Providers[index] = provider.Copy();
+    }
     public static string Label(string value) => value switch
     {
         "person"=>"Persona", "organization"=>"Organización", "community_center"=>"Centro comunitario",
