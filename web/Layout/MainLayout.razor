@@ -1,6 +1,61 @@
 @inherits LayoutComponentBase
-<MudThemeProvider />
+@implements IDisposable
+@inject DemoStore Store
+@inject NavigationManager Nav
+<MudThemeProvider Theme="@theme" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
-<main>@Body</main>
+<a class="skip-link" href="#contenido">Saltar al contenido</a>
+<div class="app-shell">
+    <aside class="sidebar @(menuOpen ? "is-open" : "")" aria-label="Navegación principal">
+        <a class="brand" href="/" aria-label="Pulso PR inicio"><span class="brand-mark" aria-hidden="true">p</span><span>Pulso PR<small>Conectamos ayuda</small></span></a>
+        <div class="sidebar-section">ESPACIO DE TRABAJO</div>
+        <MudNavMenu Class="portal-nav">
+            @if (Store.Role == "admin")
+            {
+                <MudNavLink Href="/admin" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Dashboard">Panorama territorial</MudNavLink>
+                <MudNavLink Href="/admin/proveedores" Icon="@Icons.Material.Outlined.Groups">Proveedores</MudNavLink>
+                <MudNavLink Href="/admin/pendientes" Icon="@Icons.Material.Outlined.Inbox">Pendientes</MudNavLink>
+                <MudNavLink Href="/admin/indicadores" Icon="@Icons.Material.Outlined.BarChart">Indicadores</MudNavLink>
+            }
+            else
+            {
+                <MudNavLink Href="/proveedor" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Dashboard">Mi resumen</MudNavLink>
+                <MudNavLink Href="/proveedor/perfil" Icon="@Icons.Material.Outlined.Storefront">Perfil y horario</MudNavLink>
+                <MudNavLink Href="/proveedor/operacion" Icon="@Icons.Material.Outlined.RadioButtonChecked">Operación</MudNavLink>
+                <MudNavLink Href="/proveedor/servicios" Icon="@Icons.Material.Outlined.MedicalServices">Servicios</MudNavLink>
+                <MudNavLink Href="/proveedor/recursos" Icon="@Icons.Material.Outlined.Inventory2">Recursos</MudNavLink>
+                <MudNavLink Href="/proveedor/solicitudes" Icon="@Icons.Material.Outlined.Inbox">Solicitudes</MudNavLink>
+                <MudNavLink Href="/proveedor/historia" Icon="@Icons.Material.Outlined.History">Historia</MudNavLink>
+            }
+        </MudNavMenu>
+        <div class="sidebar-section">COMUNIDAD</div>
+        <MudNavMenu Class="portal-nav"><MudNavLink Href="/catalogo" Icon="@Icons.Material.Outlined.Explore">Directorio de ayuda</MudNavLink></MudNavMenu>
+        <div class="sidebar-bottom"><div class="demo-note"><span class="demo-dot"></span> Prototipo · Datos ficticios</div><p>Información reportada.<br />Coordina antes de acudir.</p><MudButton Href="/acceso" Size="Size.Small" StartIcon="@Icons.Material.Outlined.Logout">Cambiar acceso demo</MudButton></div>
+    </aside>
+    @if (menuOpen) { <button class="menu-scrim" aria-label="Cerrar navegación" @onclick="()=>menuOpen=false"></button> }
+    <div class="workspace">
+        <header class="topbar">
+            <MudIconButton Class="menu-toggle" Icon="@Icons.Material.Outlined.Menu" aria-label="Abrir navegación" OnClick="()=>menuOpen=!menuOpen" />
+            <div class="topbar-context">Portal de ayuda <span>/</span> <strong>@(Store.Role == "admin" ? "Administración" : "Proveedor")</strong></div>
+            <div class="topbar-actions"><span class="review-label">MVP · Datos de demostración</span><MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="SwitchRole">@(Store.Role == "admin" ? "Ver como proveedor" : "Ver como administración")</MudButton><span class="avatar">@(Store.Role == "admin" ? "AD" : "PR")</span></div>
+        </header>
+        <main id="contenido" tabindex="-1">@Body</main>
+        <footer class="app-footer"><span>Pulso PR · Una comunidad, más posibilidades.</span><span>Demo sintética · Hora de Puerto Rico</span></footer>
+    </div>
+</div>
+@code {
+    private bool menuOpen;
+    private readonly MudTheme theme = new()
+    {
+        PaletteLight = new PaletteLight { Primary="#176A55", PrimaryDarken="#0F5544", PrimaryLighten="#E8F3ED", Secondary="#F9E9DC", Background="#F6F8F5", Surface="#FFFFFF", TextPrimary="#1C3029", TextSecondary="#68776F", LinesDefault="#E4E9E4", Success="#176A55", Warning="#936427", Error="#B95549", Info="#3A6E87" },
+        LayoutProperties = new LayoutProperties { DefaultBorderRadius="12px" },
+        Typography = new Typography { Default = new DefaultTypography { FontFamily=["Inter", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "sans-serif"] } }
+    };
+    private void SwitchRole() { Store.Role=Store.Role=="admin" ? "proveedor" : "admin"; menuOpen=false; Nav.NavigateTo(Store.Role=="admin" ? "/admin" : "/proveedor"); }
+    protected override void OnParametersSet() { var path=new Uri(Nav.Uri).AbsolutePath; if(path.StartsWith("/admin")) Store.Role="admin"; else if(path.StartsWith("/proveedor")) Store.Role="proveedor"; }
+    protected override void OnInitialized() => Nav.LocationChanged += LocationChanged;
+    private void LocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) { menuOpen=false; OnParametersSet(); _=InvokeAsync(StateHasChanged); }
+    public void Dispose() => Nav.LocationChanged -= LocationChanged;
+}

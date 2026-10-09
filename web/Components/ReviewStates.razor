@@ -1,0 +1,16 @@
+@inject NavigationManager Nav
+<details class="review-states">
+    <summary>Revisión de UI · Explorar estados</summary>
+    <div class="state-buttons">
+    @foreach (var state in states)
+    {
+        <MudButton Size="Size.Small" Variant="@(Current==state.Key ? Variant.Filled : Variant.Text)" Color="Color.Primary" OnClick="()=>Change(state.Key)">@state.Value</MudButton>
+    }
+    </div>
+    <small>Estados simulados para revisar esta pantalla. No se consulta Appwrite.</small>
+</details>
+@code {
+    [Parameter] public string? Current { get; set; }
+    private readonly Dictionary<string,string> states = new() { ["normal"]="Normal", ["carga"]="Carga", ["vacio"]="Vacío", ["error"]="Error", ["sin-acceso"]="Sin asignación", ["sesion"]="Sesión vencida", ["conflicto"]="Conflicto", ["desconexion"]="Desconexión" };
+    private void Change(string state) => Nav.NavigateTo(Nav.GetUriWithQueryParameter("estado",state=="normal" ? null : state));
+}

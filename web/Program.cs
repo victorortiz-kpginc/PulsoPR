@@ -7,4 +7,5 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 builder.Services.AddMudServices();
+builder.Services.AddScoped<PulsoPR.Web.Models.DemoStore>();
 await builder.Build().RunAsync();

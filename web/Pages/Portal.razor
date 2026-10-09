@@ -1,0 +1,506 @@
+@page "/"
+@page "/acceso"
+@page "/seleccionar"
+@page "/proveedor"
+@page "/proveedor/perfil"
+@page "/proveedor/operacion"
+@page "/proveedor/servicios"
+@page "/proveedor/recursos"
+@page "/proveedor/solicitudes"
+@page "/proveedor/solicitudes/{Id}"
+@page "/proveedor/historia"
+@page "/catalogo"
+@page "/catalogo/{Id}"
+@page "/admin"
+@page "/admin/proveedores"
+@page "/admin/pendientes"
+@page "/admin/solicitudes/{Id}"
+@page "/admin/indicadores"
+@inject DemoStore Store
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@implements IDisposable
+<PageTitle>@Title · Pulso PR</PageTitle>
+<div class="page-heading">
+<div>
+<div class="eyebrow">@Category</div>
+<h1 tabindex="-1">@Title</h1>
+<p>@Subtitle</p>
+</div>
+@if (Path.StartsWith("proveedor")) { <MudButton Href="/seleccionar" Variant="Variant.Outlined" StartIcon="@Icons.Material.Outlined.SwapHoriz">@Store.Selected.Name</MudButton> }
+</div>
+@if (Estado is "carga")
+{
+    <MudPaper Class="state-panel" Elevation="0">
+<MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+<h2>Cargando información</h2>
+<p>Estamos preparando esta vista.</p>
+<MudSkeleton Height="60px" Width="80%" />
+<MudSkeleton Height="60px" Width="65%" />
+</MudPaper>
+}
+else if (Estado is "error" or "sin-acceso" or "sesion" or "vacio")
+{
+    <MudPaper Class="state-panel" Elevation="0">
+<MudIcon Icon="@StateIcon" Size="Size.Large" Color="Color.Primary" />
+<h2>@StateTitle</h2>
+<p>@StateDescription</p>
+<MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="ResetState">@(Estado=="sesion" ? "Volver al acceso demo" : "Volver a intentar")</MudButton>
+</MudPaper>
+}
+else
+{
+    @if (Estado=="conflicto") { <MudAlert Severity="Severity.Warning" Class="mb-4">La información cambió mientras editabas. Recarga antes de guardar.<MudButton OnClick="ResetState" Size="Size.Small">Recargar datos</MudButton>
+</MudAlert> }
+    @if (Estado=="desconexion") { <MudAlert Severity="Severity.Warning" Class="mb-4">Actualización desconectada. La información puede estar desactualizada.<MudButton OnClick="ResetState" Size="Size.Small">Actualizar ahora</MudButton>
+</MudAlert> }
+    @if (Path=="acceso")
+    {
+        <div class="access-grid">
+<div class="access-story">
+<span class="hero-tag">AYUDA QUE CONECTA</span>
+<h2>La comunidad se fortalece<br />cuando colaboramos.</h2>
+<p>Un espacio para que personas, organizaciones y centros comunitarios coordinen servicios y apoyo en Puerto Rico.</p>
+<div class="access-art" aria-hidden="true">
+<span>+</span>
+<span>↗</span>
+<span>♡</span>
+</div>
+<small>Para emergencias, llama al 911.</small>
+</div>
+        <MudPaper Class="panel access-panel" Elevation="0">
+<div class="eyebrow">BIENVENIDO AL PORTAL</div>
+<h2>Explora la demostración</h2>
+<p class="muted">Selecciona una experiencia para revisar las pantallas. Este acceso es simulado.</p>
+<MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Storefront" OnClick="()=>Enter(false)">Entrar como proveedor demo</MudButton>
+<MudButton FullWidth="true" Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Dashboard" OnClick="()=>Enter(true)">Entrar como administración demo</MudButton>
+<MudDivider />
+<p class="small">No se usan cuentas ni contraseñas reales. La autenticación se evaluará después de la aprobación visual.</p>
+<MudButton Href="/catalogo" Variant="Variant.Text">Explorar directorio</MudButton>
+</MudPaper>
+</div>
+    }
+    else if (Path=="seleccionar")
+    {
+        <div class="provider-grid">@foreach(var p in Store.Providers) { <MudPaper Class="provider-card" Outlined="true" Elevation="0">
+<span class="provider-icon">
+<MudIcon Icon="@Icons.Material.Outlined.Storefront" />
+</span>
+<div class="eyebrow">@DemoStore.Label(p.ProviderType)</div>
+<h2>@p.Name</h2>
+<p class="muted">@p.Municipality · Proveedor ficticio</p>
+<MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="()=>SelectProvider(p.Id)">Seleccionar @p.Name</MudButton>
+</MudPaper> }</div>
+        <p class="footnote">Asignaciones simuladas para revisar los tres tipos de proveedor. No representan membresías de acceso.</p>
+    }
+    else if (Path is "" or "proveedor")
+    {
+        <div class="hero-panel">
+<div>
+<span class="hero-tag">CADA ACTUALIZACIÓN CUENTA</span>
+<h2>Tu información ayuda<br />a alguien a dar el siguiente paso.</h2>
+<p>Confirma cómo estás operando y mantén a tu comunidad informada.</p>
+<MudButton Href="/proveedor/operacion" Variant="Variant.Filled" Color="Color.Primary" EndIcon="@Icons.Material.Outlined.ArrowForward">Actualizar operación</MudButton>
+</div>
+<div class="hero-mark" aria-hidden="true">
+<span class="mark-ring">
+</span>
+<span class="mark-core">+</span>
+<span class="mark-caption">Estamos para ayudar</span>
+</div>
+</div>
+        <div class="stat-grid">
+<div class="stat-card">
+<span>Estado actual</span>
+<StatusPill Value="@Store.Selected.State" />
+<small>@Store.Selected.Name</small>
+</div>
+<div class="stat-card">
+<span>Solicitudes por revisar</span>
+<strong>@ProviderRequests.Count(r=>r.Status is "submitted" or "acknowledged")</strong>
+<small>Enviadas y recibidas</small>
+</div>
+<div class="stat-card">
+<span>Confirmación</span>
+<strong class="stat-text">@DemoStore.Confirmation(Store.Selected)</strong>
+<small>@(Store.Selected.ConfirmedAt is null ? "Fecha no disponible" : DemoStore.LocalTime(Store.Selected.ConfirmedAt.Value))</small>
+</div>
+</div>
+        <div class="section-heading">
+<div>
+<h2>Solicitudes que necesitan tu atención</h2>
+<p>Una respuesta clara también es una forma de ayudar.</p>
+</div>
+<MudButton Href="/proveedor/solicitudes" Color="Color.Primary" EndIcon="@Icons.Material.Outlined.ArrowForward">Ver todas</MudButton>
+</div>
+        <MudPaper Class="panel table-panel" Elevation="0">
+<RequestTable Requests="@ProviderRequests.Where(r=>r.Status is "submitted" or "acknowledged")" />
+</MudPaper>
+        <div class="quick-links">
+<MudButton Href="/proveedor/perfil" StartIcon="@Icons.Material.Outlined.Edit">Revisar mi perfil</MudButton>
+<MudButton Href="/proveedor/servicios" StartIcon="@Icons.Material.Outlined.MedicalServices">Gestionar servicios</MudButton>
+<MudButton Href="/catalogo" StartIcon="@Icons.Material.Outlined.Explore">Ver directorio público</MudButton>
+</div>
+    }
+    else if (Path=="proveedor/perfil")
+    {
+        <div class="two-column">
+<MudPaper Class="panel" Elevation="0">
+<h2>Información pública</h2>
+<p class="muted">Estos datos ayudan a encontrar y contactar a tu proveedor.</p>
+<MudForm @key="Path" @ref="form" ValidationDelay="0">
+<div class="form-grid">
+<MudTextField Immediate="true" Label="Nombre público" @bind-Value="edited.Name" Required="true" RequiredError="Escribe el nombre público." MaxLength="160" Variant="Variant.Outlined" />
+<MudSelect T="string" Label="Tipo de proveedor" @bind-Value="edited.ProviderType" Variant="Variant.Outlined">@foreach(var type in types) { <MudSelectItem Value="@type">@DemoStore.Label(type)</MudSelectItem> }</MudSelect>
+<MudSelect T="string" Label="Municipio" @bind-Value="edited.Municipality" Variant="Variant.Outlined">@foreach(var m in municipalities) { <MudSelectItem Value="@m">@m</MudSelectItem> }</MudSelect>
+<MudTextField Immediate="true" Label="Contacto público" @bind-Value="edited.Phone" MaxLength="160" Variant="Variant.Outlined" />
+<MudTextField Immediate="true" Class="full-span" Label="Dirección (opcional)" @bind-Value="edited.Address" MaxLength="500" Variant="Variant.Outlined" />
+<MudTextField Immediate="true" Class="full-span" Label="Horario (opcional)" @bind-Value="edited.Hours" Lines="2" MaxLength="500" Variant="Variant.Outlined" />
+</div>
+<div class="form-actions">
+<MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveProvider" Disabled="@(Estado=="conflicto")">Guardar perfil demo</MudButton>
+<MudButton OnClick="CancelEdit">Descartar cambios</MudButton>
+</div>
+</MudForm>
+</MudPaper>
+<MudPaper Class="panel guidance" Elevation="0">
+<MudIcon Icon="@Icons.Material.Outlined.Info" Color="Color.Primary" />
+<h2>Un perfil que orienta</h2>
+<p>Personas, organizaciones y centros comunitarios comparten este portal.</p>
+<p>La dirección y el horario son opcionales. Publica sólo información de contacto adecuada para compartir.</p>
+<div class="note-box">Los cambios de revisión se guardan sólo en memoria y desaparecen al recargar.</div>
+</MudPaper>
+</div>
+    }
+    else if (Path=="proveedor/operacion")
+    {
+        <div class="two-column">
+<MudPaper Class="panel" Elevation="0">
+<h2>¿Cómo estás operando?</h2>
+<p class="muted">Reporta la condición actual y cualquier limitación.</p>
+<MudForm @key="Path" @ref="form" ValidationDelay="0">
+<div class="form-grid">
+<MudSelect T="string" Label="Estado operativo" @bind-Value="edited.State" Variant="Variant.Outlined">@foreach(var s in operationStates) { <MudSelectItem Value="@s">@DemoStore.Label(s)</MudSelectItem> }</MudSelect>
+<MudSelect T="string" Label="Electricidad" @bind-Value="edited.Electricity" Variant="Variant.Outlined">@foreach(var s in utilityStates) { <MudSelectItem Value="@s">@DemoStore.Label(s)</MudSelectItem> }</MudSelect>
+<MudSelect T="string" Label="Generador" @bind-Value="edited.Generator" Variant="Variant.Outlined">@foreach(var s in utilityStates) { <MudSelectItem Value="@s">@DemoStore.Label(s)</MudSelectItem> }</MudSelect>
+<MudTextField Immediate="true" Class="full-span" Label="Nota operativa" @bind-Value="edited.Note" Lines="3" MaxLength="500" Variant="Variant.Outlined" />
+<MudTextField Immediate="true" Label="Inicio de interrupción (opcional)" @bind-Value="edited.InterruptionStart" InputType="InputType.DateTimeLocal" Variant="Variant.Outlined" />
+<MudTextField Immediate="true" Label="Fin estimado (opcional)" @bind-Value="edited.InterruptionEnd" InputType="InputType.DateTimeLocal" Variant="Variant.Outlined" />
+</div>
+<MudCheckBox T="bool" @bind-Value="confirmOperation" Label="Confirmo que revisé esta información (demo)." />
+<div class="form-actions">
+<MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="ConfirmOperation" Disabled="@(!confirmOperation || Estado=="conflicto")">Publicar confirmación demo</MudButton>
+<MudButton OnClick="CancelEdit">Descartar cambios</MudButton>
+</div>
+</MudForm>
+</MudPaper>
+<MudPaper Class="panel guidance" Elevation="0">
+<h2>Última confirmación</h2>
+<StatusPill Value="@Store.Selected.State" />
+<h3>@DemoStore.Confirmation(Store.Selected)</h3>
+<p>@(Store.Selected.ConfirmedAt is null ? "Sin fecha reportada" : DemoStore.LocalTime(Store.Selected.ConfirmedAt.Value))</p>
+<p>Una confirmación dura 24 horas. Después se presenta como vencida, sin garantizar disponibilidad.</p>
+<div class="note-box">La fuente y fecha del prototipo son reportadas; no acreditan verificación externa.</div>
+</MudPaper>
+</div>
+    }
+    else if (Path is "proveedor/servicios" or "proveedor/recursos")
+    {
+        <div class="two-column">
+<MudPaper Class="panel" Elevation="0">
+<div class="section-heading">
+<div>
+<h2>@(Path.EndsWith("servicios") ? "Orientación farmacéutica" : "Recurso de apoyo")</h2>
+<p>Disponibilidad reportada por el proveedor.</p>
+</div>
+<MudIcon Icon="@(Path.EndsWith("servicios") ? Icons.Material.Outlined.MedicalServices : Icons.Material.Outlined.Inventory2)" Color="Color.Primary" />
+</div>
+<MudForm @key="Path" @ref="form" ValidationDelay="0">
+<MudSelect T="string" Label="Disponibilidad" Value="@(Path.EndsWith("servicios") ? edited.ServiceAvailability : edited.ResourceAvailability)" ValueChanged="SetAvailability" Variant="Variant.Outlined">@foreach(var s in availabilityStates) { <MudSelectItem Value="@s">@DemoStore.Label(s)</MudSelectItem> }</MudSelect>
+<MudTextField Immediate="true" T="string" Label="Nota de disponibilidad" Value="@(Path.EndsWith("servicios") ? edited.ServiceNote : edited.ResourceNote)" ValueChanged="SetAvailabilityNote" Lines="3" MaxLength="500" Variant="Variant.Outlined" />
+<div class="form-actions">
+<MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveProvider" Disabled="@(Estado=="conflicto")">Guardar disponibilidad demo</MudButton>
+<MudButton OnClick="CancelEdit">Descartar cambios</MudButton>
+</div>
+</MudForm>
+</MudPaper>
+<MudPaper Class="panel guidance" Elevation="0">
+<h2>Información para coordinar</h2>
+<p>Disponible, limitado, no disponible o sin información: usa el estado que mejor describe la situación actual.</p>
+<div class="note-box">No es inventario verificado de medicamentos. La disponibilidad debe coordinarse antes de acudir.</div>
+</MudPaper>
+</div>
+    }
+    else if (Path is "proveedor/solicitudes" or "admin/pendientes")
+    {
+        <MudPaper Class="panel" Elevation="0">
+<div class="filter-row">
+<MudTextField Label="Buscar solicitud" @bind-Value="search" Immediate="true" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search" />
+<MudSelect T="string" Label="Estado de solicitud" @bind-Value="requestFilter" Variant="Variant.Outlined">
+<MudSelectItem Value="@("todos")">Todos los estados</MudSelectItem>@foreach(var s in requestStates) { <MudSelectItem Value="@s">@DemoStore.Label(s)</MudSelectItem> }</MudSelect>
+</div>
+<RequestTable Requests="@FilteredRequests" Admin="@IsAdmin" />
+</MudPaper>
+<p class="footnote">Pendientes = enviadas y recibidas. Enviar una solicitud no confirma atención. Datos sintéticos, sin información clínica.</p>
+    }
+    else if (Path.Contains("/solicitudes/"))
+    {
+        @if (CurrentRequest is not { } request) { <MudAlert Severity="Severity.Warning">Solicitud no encontrada en esta experiencia demo.</MudAlert>
+<MudButton Href="@(IsAdmin ? "/admin/pendientes" : "/proveedor/solicitudes")">Volver a solicitudes</MudButton> }
+        else
+        {
+            <div class="two-column">
+<MudPaper Class="panel" Elevation="0">
+<div class="section-heading">
+<h2>@request.Id</h2>
+<StatusPill Value="@request.Status" />
+</div>
+<div class="eyebrow">SOLICITUD NO URGENTE · FICTICIA</div>
+<p class="request-body">@request.Description</p>
+<dl class="detail-list">
+<dt>Proveedor</dt>
+<dd>@Store.Providers.Single(p=>p.Id==request.FacilityId).Name</dd>
+<dt>Servicio</dt>
+<dd>Orientación farmacéutica</dd>
+<dt>Recibida</dt>
+<dd>@DemoStore.LocalTime(request.CreatedAt)</dd>
+</dl>
+            @if (!IsAdmin && request.Status is not ("completed" or "declined" or "cancelled"))
+            {
+                <MudDivider />
+<h3>Responder a la solicitud</h3>
+<MudForm @key="Path" @ref="form" ValidationDelay="0">
+<MudTextField Immediate="true" Label="Mensaje al solicitante" @bind-Value="response" Lines="3" MaxLength="500" Required="true" RequiredError="Escribe una respuesta breve para continuar." Variant="Variant.Outlined" HelperText="Sin diagnósticos ni información personal. Respuesta simulada." />
+<div class="form-actions">@if(request.Status=="submitted") { <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(Estado=="conflicto")" OnClick='()=>Respond("acknowledged")'>Marcar como recibida</MudButton> } else if(request.Status=="acknowledged") { <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(Estado=="conflicto")" OnClick='()=>Respond("confirmed")'>Confirmar coordinación</MudButton>
+<MudButton Color="Color.Error" Variant="Variant.Outlined" Disabled="@(Estado=="conflicto")" OnClick='()=>Respond("declined")'>No podemos atender</MudButton> } else if(request.Status=="confirmed") { <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(Estado=="conflicto")" OnClick='()=>Respond("completed")'>Completar coordinación</MudButton> }</div>
+</MudForm>
+            }
+            else { <MudAlert Severity="Severity.Info" Class="mt-4">@(IsAdmin ? "Vista administrativa de consulta. Las respuestas las gestiona el proveedor." : "Esta solicitud está cerrada. No admite más cambios en la demo.")</MudAlert> }
+            </MudPaper>
+<MudPaper Class="panel" Elevation="0">
+<h2>Seguimiento</h2>
+<ol class="timeline">
+<li>
+<strong>Enviada</strong>
+<small>@DemoStore.LocalTime(request.CreatedAt)</small>
+<p>Solicitud creada en la fixture visual.</p>
+</li>@foreach(var e in request.Events) { <li>
+<strong>@DemoStore.Label(e.State)</strong>
+<small>@DemoStore.LocalTime(e.Time)</small>
+<p>@e.Note</p>
+</li> }</ol>
+<p class="footnote">Historial simulado para revisar el flujo. No acredita entrega ni autoría.</p>
+</MudPaper>
+</div>
+        }
+    }
+    else if (Path=="proveedor/historia")
+    {
+        <MudPaper Class="panel" Elevation="0">
+<h2>Actividad reciente</h2>@if(!Store.History.Any(h=>h.FacilityId==Store.SelectedId)) { <p class="muted">Todavía no hay actividad para este proveedor de demo.</p> }<ol class="timeline">@foreach(var item in Store.History.Where(h=>h.FacilityId==Store.SelectedId)) { <li>
+<strong>@item.Title</strong>
+<small>@DemoStore.LocalTime(item.Time)</small>
+<p>@item.Note</p>
+</li> }</ol>
+<MudAlert Severity="Severity.Info">Historia sintética de revisión. Las fechas y fuentes reportadas no son una auditoría resistente a cambios.</MudAlert>
+</MudPaper>
+    }
+    else if (Path is "catalogo" or "admin/proveedores")
+    {
+        <MudPaper Class="panel filter-panel" Elevation="0">
+<div class="filter-row">
+<MudTextField Label="Buscar proveedor" @bind-Value="search" Immediate="true" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search" />
+<MudSelect T="string" Label="Municipio" @bind-Value="municipalityFilter" Variant="Variant.Outlined">
+<MudSelectItem Value="@("todos")">Todos los municipios</MudSelectItem>@foreach(var m in municipalities) { <MudSelectItem Value="@m">@m</MudSelectItem> }</MudSelect>
+<MudSelect T="string" Label="Tipo de proveedor" @bind-Value="typeFilter" Variant="Variant.Outlined">
+<MudSelectItem Value="@("todos")">Todos los tipos</MudSelectItem>@foreach(var t in types) { <MudSelectItem Value="@t">@DemoStore.Label(t)</MudSelectItem> }</MudSelect>
+</div>
+</MudPaper>
+        <div class="section-heading">
+<p>
+<strong>@FilteredProviders.Count()</strong> proveedores en esta demostración</p>
+<MudButton OnClick="ClearFilters" Size="Size.Small">Limpiar filtros</MudButton>
+</div>
+        @if(FilteredProviders.Any()) { <ProviderList Providers="@FilteredProviders" /> } else { <MudPaper Class="state-panel" Elevation="0">
+<h2>No encontramos proveedores</h2>
+<p>Prueba otro municipio, tipo o nombre.</p>
+<MudButton OnClick="ClearFilters">Limpiar filtros</MudButton>
+</MudPaper> }
+        <p class="footnote">La información es reportada y puede cambiar. Una confirmación reciente no garantiza atención ni existencias.</p>
+    }
+    else if (Path.StartsWith("catalogo/"))
+    {
+        @if(Store.Providers.FirstOrDefault(p=>p.Id==Id) is not {} provider) { <MudAlert Severity="Severity.Warning">Proveedor no encontrado.</MudAlert>
+<MudButton Href="/catalogo">Volver al directorio</MudButton> }
+        else
+        {
+            <div class="two-column">
+<MudPaper Class="panel" Elevation="0">
+<div class="section-heading">
+<span class="provider-icon">
+<MudIcon Icon="@Icons.Material.Outlined.Storefront" />
+</span>
+<StatusPill Value="@provider.State" />
+</div>
+<div class="eyebrow">@DemoStore.Label(provider.ProviderType)</div>
+<h2>@provider.Name</h2>
+<p>@provider.Municipality · Proveedor ficticio</p>
+<MudDivider />
+<h3>Información para tu visita</h3>
+<dl class="detail-list">
+<dt>Dirección</dt>
+<dd>@Optional(provider.Address)</dd>
+<dt>Horario</dt>
+<dd>@Optional(provider.Hours)</dd>
+<dt>Contacto</dt>
+<dd>@Optional(provider.Phone)</dd>
+</dl>
+<p>@provider.Note</p>
+<h3>Servicios y recursos</h3>
+<div class="service-line">
+<span>Orientación farmacéutica</span>
+<StatusPill Value="@provider.ServiceAvailability" />
+</div>
+<div class="service-line">
+<span>Recurso de apoyo</span>
+<StatusPill Value="@provider.ResourceAvailability" />
+</div>
+<MudButton Href="/catalogo" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.ArrowBack">Volver al directorio</MudButton>
+</MudPaper>
+<MudPaper Class="panel guidance" Elevation="0">
+<h2>@DemoStore.Confirmation(provider)</h2>
+<p>@(provider.ConfirmedAt is null ? "Fecha no disponible" : DemoStore.LocalTime(provider.ConfirmedAt.Value))</p>
+<p>@(provider.Source=="CommunityReported" ? "Reporte comunitario sin verificar." : "Información reportada por el proveedor de demo.")</p>
+<div class="note-box">No garantiza atención ni inventario. Coordina antes de visitar. Para emergencias, llama al 911.</div>
+</MudPaper>
+</div>
+        }
+    }
+    else if (Path is "admin" or "admin/indicadores")
+    {
+        <div class="admin-intro">
+<div>
+<span class="hero-tag">UNA MIRADA COMPARTIDA</span>
+<h2>Conectar necesidades.<br />Coordinar posibilidades.</h2>
+<p>Panorama informativo de la red sintética de ayuda.</p>
+</div>
+<MudButton Href="/admin/proveedores" Variant="Variant.Filled" Color="Color.Primary" EndIcon="@Icons.Material.Outlined.ArrowForward">Explorar proveedores</MudButton>
+</div>
+        <div class="stat-grid four">
+<div class="stat-card">
+<span>Proveedores</span>
+<strong>@Store.Providers.Count</strong>
+<small>Personas y organizaciones</small>
+</div>
+<div class="stat-card">
+<span>Municipios representados</span>
+<strong>@Store.Providers.Select(p=>p.Municipality).Distinct().Count()</strong>
+<small>En la fixture de revisión</small>
+</div>
+<div class="stat-card">
+<span>Solicitudes pendientes</span>
+<strong>@Store.Requests.Count(r=>r.Status is "submitted" or "acknowledged")</strong>
+<small>Enviadas y recibidas</small>
+</div>
+<div class="stat-card">
+<span>Por reconfirmar</span>
+<strong>@Store.Providers.Count(p=>DemoStore.Confirmation(p)!="Confirmación reciente")</strong>
+<small>Sin confirmación reciente</small>
+</div>
+</div>
+        <div class="two-column">
+<MudPaper Class="panel" Elevation="0">
+<div class="section-heading">
+<h2>Red por municipio</h2>
+<span class="small muted">Proveedores ficticios</span>
+</div>@foreach(var m in municipalities) { <div class="bar-row">
+<span>@m</span>
+<div class="bar-track">
+<div style="width:@(Store.Providers.Count(p=>p.Municipality==m)*50)%">
+</div>
+</div>
+<strong>@Store.Providers.Count(p=>p.Municipality==m)</strong>
+</div> }<p class="footnote">Distribución de esta fixture. No representa cobertura real de Puerto Rico.</p>
+</MudPaper>
+<MudPaper Class="panel" Elevation="0">
+<h2>Prioridades de coordinación</h2>
+<a class="priority-row" href="/admin/pendientes">
+<span class="priority-icon">
+<MudIcon Icon="@Icons.Material.Outlined.Inbox" />
+</span>
+<div>
+<strong>Solicitudes pendientes</strong>
+<p>Revisar coordinación con proveedores</p>
+</div>
+<MudIcon Icon="@Icons.Material.Outlined.ChevronRight" />
+</a>
+<a class="priority-row" href="/admin/proveedores">
+<span class="priority-icon amber">
+<MudIcon Icon="@Icons.Material.Outlined.Schedule" />
+</span>
+<div>
+<strong>Confirmaciones antiguas</strong>
+<p>Información que necesita revisión</p>
+</div>
+<MudIcon Icon="@Icons.Material.Outlined.ChevronRight" />
+</a>
+</MudPaper>
+</div>
+        @if(Path=="admin/indicadores") { <MudPaper Class="panel mt-4" Elevation="0">
+<h2>Lectura responsable de indicadores</h2>
+<p>Conteos calculados a partir de datos sintéticos en memoria. No representan impacto, rendimiento ni demanda real.</p>
+<dl class="detail-list">
+<dt>Primera respuesta</dt>
+<dd>No disponible: eventos fiables pendientes</dd>
+<dt>Tiempo de confirmación</dt>
+<dd>No disponible: integración pendiente</dd>
+</dl>
+<MudAlert Severity="Severity.Info">Informes avanzados y tendencias se difieren fuera del MVP.</MudAlert>
+</MudPaper> }
+        else { <div class="section-heading">
+<h2>Información por reconfirmar</h2>
+<MudButton Href="/admin/proveedores">Ver toda la red</MudButton>
+</div>
+<ProviderList Providers="@Store.Providers.Where(p=>DemoStore.Confirmation(p)!="Confirmación reciente")" /> }
+    }
+}
+@code {
+    [Parameter] public string? Id { get; set; }
+    [SupplyParameterFromQuery(Name="estado")] public string? Estado { get; set; }
+    private string Path => new Uri(Nav.Uri).AbsolutePath.Trim('/');
+    private bool IsAdmin => Path.StartsWith("admin");
+    private ProviderView edited = new();
+    private string lastPath = "";
+    private MudForm? form;
+    private string search="", municipalityFilter="todos", typeFilter="todos", requestFilter="todos", response="";
+    private bool confirmOperation;
+    private readonly string[] types=["person","organization","community_center"], municipalities=["San Juan","Ponce","Mayagüez"], operationStates=["operational","limited","unavailable","unknown"], utilityStates=["available","unavailable","unknown"], availabilityStates=["available","limited","unavailable","unknown"], requestStates=["submitted","acknowledged","confirmed","declined","completed","cancelled"];
+    private IEnumerable<RequestView> ProviderRequests => Store.Requests.Where(r=>r.FacilityId==Store.SelectedId);
+    private IEnumerable<ProviderView> FilteredProviders => Store.Providers.Where(p=>(municipalityFilter=="todos" || p.Municipality==municipalityFilter) && (typeFilter=="todos" || p.ProviderType==typeFilter) && p.Name.Contains(search,StringComparison.OrdinalIgnoreCase));
+    private IEnumerable<RequestView> FilteredRequests => (IsAdmin ? Store.Requests.Where(r=>r.Status is "submitted" or "acknowledged") : ProviderRequests).Where(r=>(requestFilter=="todos" || r.Status==requestFilter) && (r.Id+" "+r.Description).Contains(search,StringComparison.OrdinalIgnoreCase));
+    private RequestView? CurrentRequest => (IsAdmin ? Store.Requests : ProviderRequests).FirstOrDefault(r=>r.Id==Id);
+    private string Title => Path switch { "acceso"=>"Bienvenido a Pulso PR", "seleccionar"=>"Elige tu espacio de ayuda", "proveedor/perfil"=>"Perfil y horario", "proveedor/operacion"=>"Operación y confirmación", "proveedor/servicios"=>"Servicios que ofreces", "proveedor/recursos"=>"Disponibilidad de recursos", "proveedor/solicitudes"=>"Bandeja de solicitudes", "proveedor/historia"=>"Historia de actividad", "catalogo"=>"Directorio de ayuda", "admin"=>"Panorama territorial", "admin/proveedores"=>"Red de proveedores", "admin/pendientes"=>"Solicitudes pendientes", "admin/indicadores"=>"Indicadores de la demo", _ when Path.Contains("/solicitudes/")=>"Detalle de solicitud", _ when Path.StartsWith("catalogo/")=>"Detalle del proveedor", _=>"Hola, qué bueno tenerte aquí." };
+    private string Category => IsAdmin ? "ADMINISTRACIÓN · DEMOSTRACIÓN" : Path.StartsWith("catalogo") ? "NUESTRA COMUNIDAD" : "PROVEEDOR · DEMOSTRACIÓN";
+    private string Subtitle => Path switch { "admin"=>"Una visión de la ayuda disponible y las necesidades por coordinar.", "catalogo" or "admin/proveedores"=>"Personas, organizaciones y centros comunitarios que conectan ayuda.", "proveedor/solicitudes" or "admin/pendientes"=>"Revisa necesidades no urgentes y coordina el siguiente paso.", _=>"Información clara para una comunidad mejor conectada." };
+    private string StateTitle => Estado switch { "error"=>"No pudimos cargar la información", "sin-acceso"=>"No tienes un proveedor asignado", "sesion"=>"Tu sesión ha vencido", _=>"Todavía no hay información" };
+    private string StateDescription => Estado switch { "error"=>"Revisa la conexión y vuelve a intentar. No se guardaron cambios.", "sin-acceso"=>"Solicita una asignación al responsable del portal. Este estado es simulado.", "sesion"=>"Vuelve al acceso demo para continuar. No se muestran datos en este estado.", _=>"Cuando haya información para esta vista, la encontrarás aquí." };
+    private string StateIcon => Estado switch { "error"=>Icons.Material.Outlined.CloudOff, "sin-acceso"=>Icons.Material.Outlined.Lock, "sesion"=>Icons.Material.Outlined.Login, _=>Icons.Material.Outlined.Inbox };
+    protected override void OnInitialized() => Nav.LocationChanged += LocationChanged;
+    protected override void OnParametersSet() => LoadView();
+    private void LoadView() { if(lastPath!=Path) { search=""; municipalityFilter=typeFilter=requestFilter="todos"; lastPath=Path; } edited=Store.Selected.Copy(); response=""; confirmOperation=false; if(IsAdmin) Store.Role="admin"; else if(Path.StartsWith("proveedor")) Store.Role="proveedor"; }
+    // Multiple routes share this component. Exact paths can change without any
+    // route parameters changing, so navigation must explicitly refresh the view.
+    private void LocationChanged(object? sender, LocationChangedEventArgs e) => _=InvokeAsync(() => { LoadView(); StateHasChanged(); });
+    public void Dispose() => Nav.LocationChanged -= LocationChanged;
+    private void Enter(bool admin) { Store.Role=admin ? "admin" : "proveedor"; Nav.NavigateTo(admin ? "/admin" : "/seleccionar"); }
+    private void SelectProvider(string id) { Store.SelectedId=id; Store.Role="proveedor"; Nav.NavigateTo("/proveedor"); }
+    private void ResetState() => Nav.NavigateTo(Estado=="sesion" ? "/acceso" : Nav.GetUriWithQueryParameter("estado",(string?)null));
+    private void ClearFilters() { search=""; municipalityFilter=typeFilter="todos"; }
+    private void CancelEdit() { edited=Store.Selected.Copy(); confirmOperation=false; Snackbar.Add("Cambios descartados.",Severity.Info); }
+    private void SetAvailability(string value) { if(Path.EndsWith("servicios")) edited.ServiceAvailability=value; else edited.ResourceAvailability=value; }
+    private void SetAvailabilityNote(string value) { if(Path.EndsWith("servicios")) edited.ServiceNote=value; else edited.ResourceNote=value; }
+    private async Task SaveProvider() { if(Estado=="conflicto") return; if(form is not null) { await form.ValidateAsync(); if(!form.IsValid) return; } Store.Save(edited); Snackbar.Add("Cambio simulado guardado en memoria. Sin publicación real.",Severity.Success); }
+    private async Task ConfirmOperation() { if(!confirmOperation) return; if(!string.IsNullOrEmpty(edited.InterruptionEnd) && (string.IsNullOrEmpty(edited.InterruptionStart) || string.CompareOrdinal(edited.InterruptionEnd,edited.InterruptionStart)<0)) { Snackbar.Add("Revisa el inicio y fin de la interrupción.",Severity.Warning); return; } edited.ConfirmedAt=DateTimeOffset.UtcNow; edited.Source="FacilityConfirmed"; await SaveProvider(); }
+    private async Task Respond(string status) { if(Estado=="conflicto" || IsAdmin || CurrentRequest is not {} request) return; if(form is not null) { await form.ValidateAsync(); if(!form.IsValid) return; } if(string.IsNullOrWhiteSpace(response)) return; var allowed=request.Status switch { "submitted"=>status=="acknowledged", "acknowledged"=>status is "confirmed" or "declined", "confirmed"=>status=="completed", _=>false }; if(!allowed) return; request.Status=status; request.Events.Add((status,DateTimeOffset.UtcNow,response.Trim())); response=""; Snackbar.Add("Respuesta simulada. No se envió a ningún ciudadano.",Severity.Success); }
+    private static string Optional(string value) => string.IsNullOrWhiteSpace(value) ? "No reportado" : value;
+}

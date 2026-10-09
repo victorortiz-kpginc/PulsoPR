@@ -1,0 +1,25 @@
+<div class="provider-grid">
+@foreach (var provider in Providers)
+{
+    <MudPaper Class="provider-card" Elevation="0" Outlined="true">
+        <div class="card-top">
+<span class="provider-icon">
+<MudIcon Icon="@TypeIcon(provider.ProviderType)" />
+</span>
+<StatusPill Value="@provider.State" />
+</div>
+        <div class="eyebrow">@DemoStore.Label(provider.ProviderType)</div>
+        <h2>@provider.Name</h2>
+        <p class="muted">
+<MudIcon Icon="@Icons.Material.Outlined.LocationOn" Size="Size.Small" /> @provider.Municipality</p>
+        <div class="confirmation">@DemoStore.Confirmation(provider)<br />
+<small>@(provider.ConfirmedAt is null ? "Fecha no disponible" : DemoStore.LocalTime(provider.ConfirmedAt.Value))</small>
+</div>
+        <MudButton Href="@($"/catalogo/{provider.Id}")" Variant="Variant.Text" Color="Color.Primary" EndIcon="@Icons.Material.Outlined.ArrowForward">Ver proveedor</MudButton>
+    </MudPaper>
+}
+</div>
+@code {
+    [Parameter] public IEnumerable<ProviderView> Providers { get; set; } = [];
+    private static string TypeIcon(string type) => type switch { "person" => Icons.Material.Outlined.Person, "community_center" => Icons.Material.Outlined.Groups, _ => Icons.Material.Outlined.Storefront };
+}

@@ -1,0 +1,33 @@
+<MudTable Items="@Requests" Hover="true" Elevation="0" Class="request-table" Breakpoint="Breakpoint.Sm">
+    <HeaderContent>
+<MudTh>Solicitud</MudTh>
+<MudTh>Proveedor</MudTh>
+<MudTh>Recibida</MudTh>
+<MudTh>Estado</MudTh>
+<MudTh>
+<span class="sr-only">Acciones</span>
+</MudTh>
+</HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Solicitud">
+<strong>@context.Id</strong>
+<small class="table-description">@context.Description</small>
+</MudTd>
+        <MudTd DataLabel="Proveedor">@Store.Providers.Single(p=>p.Id==context.FacilityId).Name</MudTd>
+        <MudTd DataLabel="Recibida">@DemoStore.LocalTime(context.CreatedAt)</MudTd>
+        <MudTd DataLabel="Estado">
+<StatusPill Value="@context.Status" />
+</MudTd>
+        <MudTd DataLabel="Acciones">
+<MudButton Href="@($"/{(Admin ? "admin" : "proveedor")}/solicitudes/{context.Id}")" Size="Size.Small" Color="Color.Primary">Ver detalle</MudButton>
+</MudTd>
+    </RowTemplate>
+    <NoRecordsContent>
+<div class="empty-inline">No hay solicitudes con estos filtros.</div>
+</NoRecordsContent>
+</MudTable>
+@code {
+    [Parameter] public IEnumerable<RequestView> Requests { get; set; } = [];
+    [Parameter] public bool Admin { get; set; }
+    [Inject] public DemoStore Store { get; set; } = default!;
+}
