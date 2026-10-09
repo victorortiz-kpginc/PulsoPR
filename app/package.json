@@ -23,6 +23,7 @@
     "dev": "vite --host 0.0.0.0",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "smoke:sdk": "node scripts/sdk-smoke.mjs"
+    "smoke:sdk": "node scripts/sdk-smoke.mjs",
+    "smoke:mvp-cloud": "node scripts/mvp-cloud-smoke.mjs"
   }
 }
