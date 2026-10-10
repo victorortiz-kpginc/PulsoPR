@@ -1,14 +1,13 @@
-# Pulso PR
-
 <p align="center">
-  <img src="assets/kpg-inc-wordmark.svg" alt="KPG.Inc" height="64">
-  &nbsp;&nbsp;
-  <img src="web/wwwroot/brand/pulsopr-logo-horizontal.svg" alt="Pulso PR" height="64">
+  <img src="web/wwwroot/brand/pulsopr-logo-horizontal.svg" alt="Pulso PR" height="128">
 </p>
 
 **Pulso PR** conecta a personas que necesitan ayuda no urgente con farmacias y otros proveedores comunitarios de Puerto Rico. El MVP permite consultar proveedores, enviar y seguir solicitudes, responderlas desde el portal de proveedores y revisar la actividad desde administración.
 
 Desarrollado por el **team de KPG.Inc**.
+<p align="center">
+  <img src="assets/KPG.png" alt="KPG.Inc" height="64">
+</p>
 
 Proyecto creado para el [hackathon del Caribbean AI Summit 2026](https://www.caribbeansummit.ai/es/hackathon), celebrado en San Juan, Puerto Rico. Conoce el [Caribbean AI Summit](https://www.caribbeansummit.ai/es). La página del proyecto en [Devpost](https://devpost.com/software/pulsopr) ya está reservada, pero la presentación todavía no está publicada.
 
