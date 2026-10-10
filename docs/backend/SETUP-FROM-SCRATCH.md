@@ -1,18 +1,18 @@
 # Instalación desde cero con un proyecto Appwrite propio
 
-Esta guía crea un entorno personal de desarrollo y sólo usa datos ficticios. La fuente canónica del MVP actual es [schema/pulso-pr.schema.json](../../backend/schema/pulso-pr.schema.json); el aprovisionador **no ejecuta** el plan histórico `backend/reconstruction/dev.mcp-plan.json` ni crea Functions.
+Esta guía crea un entorno de desarrollo Appwrite seleccionado por el operador y sólo usa datos ficticios. La fuente canónica del MVP actual es [schema/pulso-pr.schema.json](../../backend/schema/pulso-pr.schema.json). El aprovisionador no crea Functions ni modifica el proyecto compartido del hackathon.
 
 ## Alcance actual y estado de verificación
 
 - Contrato actual: 1 base `pulso-pr`, 13 colecciones, 76 atributos, 31 índices y el bucket `facility-images` con CRUD público para archivos sintéticos. Las referencias oficiales son de sólo lectura; los recursos de demo usan acceso abierto propio del hackathon.
-- El contrato y ambos clientes usan la API **Databases (colecciones/documentos)** y la lectura Cloud actual reportó la base como `legacy`. Appwrite marca hoy esa familia API como deprecada y recomienda TablesDB. Se conserva aquí para mantener intacta la aplicación actual; el aprovisionamiento limpio con Databases debe verificarse en otro proyecto Cloud. No se migra a TablesDB sin una tarea que cambie y pruebe ambos clientes y el schema.
+- El contrato y ambos clientes usan **Appwrite Databases (colecciones/documentos)** con Appwrite Web SDK 26.2.0. Appwrite mantiene esta API por compatibilidad, aunque recomienda TablesDB para proyectos nuevos y reserva las mejoras principales para la API nueva ([anuncio oficial](https://appwrite.io/changelog/entry/2025-08-26-2)). Se conserva el contrato para no cambiar el comportamiento actual; la instalación limpia con Databases aún debe probarse en otro proyecto Cloud.
 - Datos: los 78 municipios referenciados por códigos oficiales Census y el servicio `pharmacy`, más las filas explícitas en `backend/hackathon/demo.seed.json` (todas marcadas ficticias, incluida una incidencia vencida para probar vigencia).
 - Auth: tres cuentas sintéticas; el proveedor y administración reciben membresías de Teams. La app ciudadana no requiere Team.
 - Aplicaciones: Ionic usa `.env.local`; Blazor WASM combina `appsettings.json` de demo con `appsettings.Development.json` o `appsettings.Production.json` local, generado por el configurador.
 - No se puede crear el proyecto ni una API key con el script: Appwrite requiere que el operador cree el proyecto y la key en Console. Activar Email/Password, registrar plataformas y completar invitaciones de Team también requiere Console o interacción de usuario.
 - **Sin probar en un proyecto nuevo independiente.** Se hicieron comprobaciones offline y una lectura MCP del proyecto compartido existente; nunca se ejecutó el aprovisionador o el smoke en Cloud. La lectura del proyecto compartido confirmó 13 colecciones y un bucket, pero no prueba una instalación limpia.
 
-Los archivos `backend/exports/dev.schema.snapshot.json` y `backend/reconstruction/dev.mcp-plan.json` son evidencia/planes históricos: el snapshot antecede a `incidents` y el plan incluye la Function original. No son la entrada de esta instalación. La Function que existe en el hackathon no es necesaria para los clientes actuales, y esta guía no la crea.
+La instalación se define únicamente por el schema, seed y datos de referencia versionados que acompañan esta guía; no depende de una exportación del proyecto compartido.
 
 ## 1. Crear proyecto y seleccionar región
 
