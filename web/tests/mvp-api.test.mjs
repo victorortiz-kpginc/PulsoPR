@@ -18,8 +18,8 @@ function fixture() {
     facilities: [{ $id: 'hackathon-demo-pharmacy', name: 'Farmacia Demo Pulso PR — FICTICIA', municipalityId: '72001', providerType: 'organization', teamId: 'hackathon-demo-team', latitude: 18.1628, longitude: -66.7221 }],
     municipalities: [{ $id: 'town-adjuntas', code: '72001', name: 'Adjuntas' }],
     incidents: [
-      { $id:'incident-active', title:'Incidente activo', incidentType:'Coordinación', municipalityId:'72001', latitude:18.1661, longitude:-66.7185, radiusMeters:700, status:'active', validFrom:'2026-10-09T13:00:00.000Z', validUntil:'2026-10-10T13:00:00.000Z', description:'Vigente' },
-      { $id:'incident-expired', title:'Incidente vencido', incidentType:'Coordinación', municipalityId:'72001', latitude:18.1630, longitude:-66.7220, radiusMeters:300, status:'active', validFrom:'2026-10-07T13:00:00.000Z', validUntil:'2026-10-08T13:00:00.000Z', description:'Vencido' }
+      { $id:'incident-active', title:'Incidente activo', incidentType:'Coordinación', municipalityId:'72001', latitude:18.1661, longitude:-66.7185, radiusMeters:700, status:'active', validFrom:new Date(Date.now()-60_000).toISOString(), validUntil:new Date(Date.now()+60_000).toISOString(), description:'Vigente' },
+      { $id:'incident-expired', title:'Incidente vencido', incidentType:'Coordinación', municipalityId:'72001', latitude:18.1630, longitude:-66.7220, radiusMeters:300, status:'active', validFrom:new Date(Date.now()-172_800_000).toISOString(), validUntil:new Date(Date.now()-86_400_000).toISOString(), description:'Vencido' }
     ],
     facility_services: [{ $id: 'service-1', facilityId: 'hackathon-demo-pharmacy', serviceId: 'pharmacy', availability: 'available', note: 'Demo' }],
     facility_operational_status: [{ $id: 'hackathon-demo-pharmacy', facilityId: 'hackathon-demo-pharmacy', operationalState: 'operational', electricityState: 'available', generatorState: 'available', note: 'Demo' }],
