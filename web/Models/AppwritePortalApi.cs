@@ -5,20 +5,6 @@ namespace PulsoPR.Web.Models;
 public sealed class AppwritePortalApi(IJSRuntime js, IConfiguration configuration) : IAsyncDisposable
 {
     private IJSObjectReference? module;
-    private static readonly IReadOnlyDictionary<string, string> Collections = new Dictionary<string, string>
-    {
-        ["facilities"] = "facilities",
-        ["municipalities"] = "municipalities",
-        ["incidents"] = "incidents",
-        ["facilityServices"] = "facility_services",
-        ["facilityOperationalStatus"] = "facility_operational_status",
-        ["resourceAvailability"] = "resource_availability",
-        ["facilityConfirmations"] = "facility_confirmations",
-        ["facilityStatusHistory"] = "facility_status_history",
-        ["assistanceRequests"] = "assistance_requests",
-        ["assistanceRequestEvents"] = "assistance_request_events"
-    };
-
     private async Task<IJSObjectReference> ModuleAsync()
     {
         if (module is not null) return module;
@@ -29,7 +15,8 @@ public sealed class AppwritePortalApi(IJSRuntime js, IConfiguration configuratio
             endpoint = section["Endpoint"],
             projectId = section["ProjectId"],
             databaseId = section["DatabaseId"],
-            collections = Collections
+            collections = section.GetSection("Collections").GetChildren()
+                .ToDictionary(item => item.Key, item => item.Value ?? string.Empty)
         });
         return module;
     }

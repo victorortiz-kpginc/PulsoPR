@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 const schema = JSON.parse(await readFile(new URL('./schema/pulso-pr.schema.json', import.meta.url), 'utf8'));
 const entities = [
-  'CitizenProfiles', 'Municipalities', 'Facilities', 'HealthcareServices',
+  'CitizenProfiles', 'Municipalities', 'Facilities', 'HealthcareServices', 'Incidents',
   'FacilityServices', 'FacilityOperationalStatus', 'FacilityStatusHistory',
   'ResourceAvailability', 'AssistanceRequests', 'AssistanceRequestEvents',
   'FacilityConfirmations', 'OperationalAuditEvents',
@@ -43,7 +43,7 @@ test('attributes explicitly define native types, limits and obligation without d
   for (const c of schema.collections) for (const a of c.attributes) {
     assert.equal(typeof a.required, 'boolean');
     assert.ok(!a.key.startsWith('$'));
-    assert.ok(['string', 'enum', 'datetime', 'boolean', 'double'].includes(a.type));
+    assert.ok(['string', 'enum', 'datetime', 'boolean', 'double', 'integer'].includes(a.type));
     if (a.type === 'string') assert.ok(a.size > 0 && a.size <= 500);
     if (a.type === 'enum') assert.ok(a.elements.length && new Set(a.elements).size === a.elements.length);
     if (a.type === 'double') assert.ok(a.min < a.max);

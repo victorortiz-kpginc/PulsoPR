@@ -47,7 +47,7 @@ export function municipalityName(code: string): string {
 }
 
 export async function listMunicipalityOptions(): Promise<{ code: string; name: string }[]> {
-  const result = await queryRows('municipalities', [Query.limit(100)]);
+  const result = await queryRows(demoConfig.collections.municipalities, [Query.limit(100)]);
   return (result.documents as Row[]).flatMap(row => typeof row.code === 'string' && typeof row.name === 'string' ? [{ code: row.code, name: row.name }] : []).sort((a, b) => a.name.localeCompare(b.name, 'es'));
 }
 
@@ -55,7 +55,7 @@ export async function listProviders(options: { municipalityId?: string; provider
   const queries = [Query.limit(100)];
   if (options.municipalityId) queries.push(Query.equal('municipalityId', options.municipalityId));
   if (options.providerType) queries.push(Query.equal('providerType', options.providerType));
-  const [result, services] = await Promise.all([queryRows('facilities', queries), queryRows('facility_services', [Query.limit(100)])]);
+  const [result, services] = await Promise.all([queryRows(demoConfig.collections.facilities, queries), queryRows(demoConfig.collections.facilityServices, [Query.limit(100)])]);
   const serviceByFacility = new Map((services.documents as Row[]).map(row => [String(row.facilityId), row]));
   return (result.documents as Row[]).map(row => previewFacility(row, serviceByFacility.get(row.$id)));
 }
@@ -97,14 +97,14 @@ export async function listGeographicPlaces(options: { municipalityId?: string; c
     ...(box ? [Query.between('latitude', box.minLat, box.maxLat), Query.between('longitude', box.minLon, box.maxLon)] : [])];
   let facilities: Row[], incidents: Row[];
   try {
-    [facilities, incidents] = await Promise.all([listAllPages('facilities', facilityFilters), listAllPages('incidents', incidentFilters)]);
+    [facilities, incidents] = await Promise.all([listAllPages(demoConfig.collections.facilities, facilityFilters), listAllPages(demoConfig.collections.incidents, incidentFilters)]);
   } catch (error) {
     // DocumentsDB has scalar latitude/longitude; if this server rejects the paired range query,
     // page by the selected municipality and keep exact filtering local.
     if (!box) throw error;
     [facilities, incidents] = await Promise.all([
-      listAllPages('facilities', [...(options.municipalityId ? [Query.equal('municipalityId', options.municipalityId)] : []), ...(options.providerType ? [Query.equal('providerType', options.providerType)] : [])]),
-      listAllPages('incidents', [...(options.municipalityId ? [Query.equal('municipalityId', options.municipalityId)] : []), Query.equal('status', 'active')])
+      listAllPages(demoConfig.collections.facilities, [...(options.municipalityId ? [Query.equal('municipalityId', options.municipalityId)] : []), ...(options.providerType ? [Query.equal('providerType', options.providerType)] : [])]),
+      listAllPages(demoConfig.collections.incidents, [...(options.municipalityId ? [Query.equal('municipalityId', options.municipalityId)] : []), Query.equal('status', 'active')])
     ]);
   }
   const now = Date.now();
@@ -130,11 +130,11 @@ export async function listGeographicPlaces(options: { municipalityId?: string; c
 }
 
 export async function getProvider(facilityId: string): Promise<PreviewProvider> {
-  const row = await db.getDocument(collection('facilities', facilityId)) as Row;
+  const row = await db.getDocument(collection(demoConfig.collections.facilities, facilityId)) as Row;
   const filter = [Query.equal('facilityId', facilityId), Query.limit(100)];
   const [services, statuses, resources, confirmations] = await Promise.all([
-    queryRows('facility_services', filter), queryRows('facility_operational_status', filter),
-    queryRows('resource_availability', filter), queryRows('facility_confirmations', filter),
+    queryRows(demoConfig.collections.facilityServices, filter), queryRows(demoConfig.collections.facilityOperationalStatus, filter),
+    queryRows(demoConfig.collections.resourceAvailability, filter), queryRows(demoConfig.collections.facilityConfirmations, filter),
   ]);
   const service = (services.documents as Row[])[0];
   const provider = previewFacility(row, service);
@@ -155,25 +155,25 @@ export async function getProvider(facilityId: string): Promise<PreviewProvider> 
 }
 
 export async function listCitizenRequests(citizenId: string): Promise<AssistanceRequest[]> {
-  const result = await queryRows('assistance_requests', [Query.equal('citizenId', citizenId), Query.orderDesc('$createdAt'), Query.limit(100)]);
+  const result = await queryRows(demoConfig.collections.assistanceRequests, [Query.equal('citizenId', citizenId), Query.orderDesc('$createdAt'), Query.limit(100)]);
   return result.documents as unknown as AssistanceRequest[];
 }
 
 export async function getCitizenRequest(requestId: string, citizenId: string): Promise<{ request: AssistanceRequest; events: RequestEvent[] }> {
-  const request = await db.getDocument(collection('assistance_requests', requestId)) as unknown as AssistanceRequest;
+  const request = await db.getDocument(collection(demoConfig.collections.assistanceRequests, requestId)) as unknown as AssistanceRequest;
   if (request.citizenId !== citizenId) throw new Error('REQUEST_NOT_OWNED_BY_CURRENT_USER');
-  const events = await queryRows('assistance_request_events', [Query.equal('requestId', requestId), Query.orderAsc('occurredAt'), Query.limit(100)]);
+  const events = await queryRows(demoConfig.collections.assistanceRequestEvents, [Query.equal('requestId', requestId), Query.orderAsc('occurredAt'), Query.limit(100)]);
   return { request, events: events.documents as unknown as RequestEvent[] };
 }
 
 async function createSubmittedEvent(requestId: string, eventId: string, citizenId: string): Promise<void> {
   try {
-    await db.createDocument({ ...collection('assistance_request_events', eventId), permissions: [], data: {
+    await db.createDocument({ ...collection(demoConfig.collections.assistanceRequestEvents, eventId), permissions: [], data: {
       requestId, eventType: 'submitted', actorId: citizenId, occurredAt: new Date().toISOString(),
     } });
   } catch (error) {
     // A repeated attempt with the same operation ID must not duplicate its event.
-    try { await db.getDocument(collection('assistance_request_events', eventId)); }
+    try { await db.getDocument(collection(demoConfig.collections.assistanceRequestEvents, eventId)); }
     catch { throw error; }
   }
 }
@@ -183,14 +183,14 @@ export async function submitCitizenRequest(input: {
 }): Promise<AssistanceRequest> {
   let request: AssistanceRequest;
   try {
-    request = await db.createDocument({ ...collection('assistance_requests', input.requestId), permissions: [], data: {
+    request = await db.createDocument({ ...collection(demoConfig.collections.assistanceRequests, input.requestId), permissions: [], data: {
       citizenId: input.citizenId, facilityId: input.facilityId, municipalityId: input.municipalityId,
       serviceId: input.serviceId, description: input.description, status: 'submitted',
     } }) as unknown as AssistanceRequest;
   } catch (error) {
     // Resolve an uncertain network result using the stable ID prepared before submit.
     try {
-      const existing = await db.getDocument(collection('assistance_requests', input.requestId)) as unknown as AssistanceRequest;
+      const existing = await db.getDocument(collection(demoConfig.collections.assistanceRequests, input.requestId)) as unknown as AssistanceRequest;
       if (existing.description !== input.description || existing.facilityId !== input.facilityId) throw error;
       request = existing;
     } catch { throw error; }

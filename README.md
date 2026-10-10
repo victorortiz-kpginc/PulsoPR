@@ -13,7 +13,7 @@ Proyecto creado para el [hackathon del Caribbean AI Summit 2026](https://www.car
 
 > **Demo de hackathon:** usa datos ficticios de desarrollo. Los roles y algunas acciones son simulados; no uses datos personales ni esta configuración en producción.
 
-## Demo
+## Run Existing Hackathon Demo
 
 Encuentra apoyo comunitario en Puerto Rico:
 
@@ -22,7 +22,7 @@ Encuentra apoyo comunitario en Puerto Rico:
 | App ciudadana (Ionic) | [Pulso PR · Apoyo cerca de ti](https://pulso-pr-app.appwrite.network/) | Ciudadanía |
 | Portal web (Blazor) | [Pulso PR Web](https://pulso-pr-web.appwrite.network/) | Proveedor y administración |
 
-Para iniciar ambas aplicaciones localmente, sigue las instrucciones de instalación de abajo.
+Esta ruta usa el entorno compartido actual de la demo. No ejecuta provisioning ni cambia recursos de Appwrite.
 
 Las cuentas son ficticias del entorno PulsoPR dev y se comparten deliberadamente para la demo:
 
@@ -34,17 +34,7 @@ Las cuentas son ficticias del entorno PulsoPR dev y se comparten deliberadamente
 
 No reutilices estas contraseñas. Las cuentas no son para producción. El inicio de sesión y la navegación por rol no convierten los datos sintéticos abiertos en un sistema con autorización de producción.
 
-## Tecnologías
-
-- **App ciudadana:** Ionic, React, TypeScript, Vite y Capacitor; Appwrite Web SDK.
-- **Portal de proveedores y administración:** Blazor WebAssembly con .NET 10, MudBlazor y Appwrite Web SDK mediante JS interop.
-- **Backend:** Appwrite Cloud, con datos sintéticos y configuración de demo descrita en `backend/` y `docs/backend/`.
-
-## Instalar y ejecutar
-
-Requisitos: Node.js LTS y npm para app/web; .NET 10 SDK para web. Los comandos siguientes se ejecutan desde PowerShell en la raíz del repositorio.
-
-### 1. App ciudadana
+Para ejecutar la demo existente localmente, usa Node.js LTS/npm y .NET 10 SDK:
 
 ```powershell
 Set-Location app
@@ -52,11 +42,7 @@ npm ci --cache .npm-cache --no-audit --no-fund
 npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
 ```
 
-Abre [http://127.0.0.1:5173](http://127.0.0.1:5173). La configuración pública de Appwrite está en `app/`; nunca pongas claves administrativas en la app.
-
-### 2. Portal web
-
-En otra terminal:
+En otra terminal, el portal web:
 
 ```powershell
 Set-Location web
@@ -66,17 +52,35 @@ dotnet restore --locked-mode
 dotnet run --no-launch-profile --urls http://localhost:5180
 ```
 
-Abre [http://localhost:5180/acceso](http://localhost:5180/acceso). La configuración pública se carga desde `web/wwwroot/appsettings.json`; no necesita una API key.
+La configuración versionada conserva los IDs públicos del entorno de demo. No ejecutes scripts de provisioning para seguir esta ruta.
 
-### 3. Backend / Appwrite
+## Install From Scratch With Your Own Appwrite Project
 
-Appwrite ya está configurado para el entorno sintético de desarrollo del MVP. Para revisar el contrato, las IDs y el estado aplicado, empieza por [la documentación backend](docs/backend/README.md). La carpeta `backend/` contiene herramientas de preparación y reconstrucción; no hace falta iniciar un servidor backend propio para levantar los dos clientes.
+Esta ruta crea una instalación independiente para desarrollo. Necesitas una cuenta Appwrite y un proyecto nuevo que tú selecciones. La guía [SETUP-FROM-SCRATCH](docs/backend/SETUP-FROM-SCRATCH.md) cubre región/endpoints, altas manuales en Console, API key temporal, schema/ACL/índices, Storage, Teams, cuentas, seeds, configuración común de los dos clientes, smoke y revocación de key.
 
-Si necesitas completar cuentas ficticias en otro entorno dev, sigue [el procedimiento de cuentas demo](backend/hackathon/README.md). El seed requiere una API key administrativa temporal: introdúcela sólo en el entorno local del operador, nunca en Git ni en clientes. Verifica el proyecto dev antes de ejecutarlo.
+```powershell
+node backend/setup/provision-fresh-project.mjs --target-environment development --target-project-id <PROJECT_ID> --endpoint https://<REGION>.cloud.appwrite.io/v1
+node backend/setup/verify-fresh-setup.mjs
+node backend/setup/configure-clients.mjs --project-id <PROJECT_ID> --endpoint https://<REGION>.cloud.appwrite.io/v1
+node backend/setup/configure-clients.mjs --project-id <PROJECT_ID> --endpoint https://<REGION>.cloud.appwrite.io/v1 --write
+```
 
-### Configuración y seguridad de la demo
+Los comandos de provisioning son dry-run por defecto. Lee la guía y confirma el proyecto personal de desarrollo antes de invocar `--apply`; se exige confirmar el mismo ID y entorno `development`, y la clave administrativa sólo se toma de `APPWRITE_API_KEY` en el entorno del operador. El código rechaza el ID del proyecto compartido. Crear el proyecto, habilitar Email/Password, registrar hostnames, crear y revocar la API key y aceptar invitaciones de Team son pasos manuales de Console/usuario.
 
-Los endpoint e IDs de cliente son configuración pública. Conserva los valores locales existentes; consulta [Appwrite config](docs/backend/APPWRITE-CONFIG.md) y los README de [app](docs/app/README.md), [web](web/README.md) y [backend](backend/README.md) para detalles de cada área. No copies secretos a `appsettings.json`, assets del cliente ni archivos versionados.
+La verificación y tests offline se ejecutan con:
+
+```powershell
+npm --prefix backend test
+npm --prefix backend run setup:verify
+```
+
+**La instalación desde cero aún no se ha probado contra un proyecto Appwrite independiente.** Los tests offline y la lectura del entorno compartido no prueban provisioning limpio. El smoke remoto escribe datos sintéticos y requiere autorización/confirmación del operador en el nuevo proyecto; sigue el paso 8 de la guía.
+
+## Tecnologías
+
+- **App ciudadana:** Ionic, React, TypeScript, Vite y Capacitor; Appwrite Web SDK.
+- **Portal de proveedores y administración:** Blazor WebAssembly con .NET 10, MudBlazor y Appwrite Web SDK mediante JS interop.
+- **Backend:** Appwrite Cloud, con datos sintéticos y configuración de demo descrita en `backend/` y `docs/backend/`.
 
 ## Documentación
 
@@ -85,6 +89,7 @@ Los endpoint e IDs de cliente son configuración pública. Conserva los valores 
 - [App ciudadana](docs/app/README.md)
 - [Portal web](web/README.md)
 - [Backend y Appwrite](docs/backend/README.md)
+- [Instalación Appwrite desde cero](docs/backend/SETUP-FROM-SCRATCH.md)
 - [Guion de demo web](docs/web/DEMO.md)
 - [Guía de desarrollo](docs/DEVELOPMENT.md)
 

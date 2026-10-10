@@ -3,4 +3,6 @@ obj/
 node_modules/
 .cache/
 .evidence/
+wwwroot/appsettings.Development.json
+wwwroot/appsettings.Production.json
 wwwroot/js/appwrite-sdk.js
