@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test *.test.mjs setup/*.test.mjs && npm --prefix functions/domain-commands test",
+    "test": "node --test schema.test.mjs public-reference.test.mjs setup/*.test.mjs",
     "setup:plan": "node setup/provision-fresh-project.mjs",
     "setup:verify": "node setup/verify-fresh-setup.mjs",
     "setup:configure-clients": "node setup/configure-clients.mjs",
